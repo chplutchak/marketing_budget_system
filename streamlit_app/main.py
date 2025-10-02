@@ -30,7 +30,7 @@ def api_post(endpoint, data):
     try:
         response = requests.post(f"{API_BASE_URL}{endpoint}", json=data)
         return response.json() if response.status_code == 200 else None
-    except: return None    
+    except: return None
 
 def api_put(endpoint, data):
     try:
@@ -182,7 +182,7 @@ if page == "Getting Started":
 
 # Dashboard Page  
 elif page == "Dashboard":
-    st.header("📊 Dashboard Overview")
+    st.header("Dashboard Overview")
     
     campaigns = api_get("/api/campaigns/")
     budget_items = api_get("/api/budgets/with-relations")
@@ -226,10 +226,9 @@ elif page == "Dashboard":
             fig = px.pie(values=list(cat_actual.values()), names=list(cat_actual.keys()))
             st.plotly_chart(fig, use_container_width=True)
 
-# Campaigns Page
-# Budget Structure Page (formerly Campaigns)
+# Budget Structure Page
 elif page == "Budget Structure":
-    st.header("📁 Budget Structure (Department → Programs → Projects)")
+    st.header("Budget Structure (Department → Programs → Projects)")
     
     tab1, tab2 = st.tabs(["View Structure", "Create New"])
     
@@ -237,7 +236,7 @@ elif page == "Budget Structure":
         campaigns = api_get("/api/campaigns/")
         
         if campaigns:
-            # Group by level for better organization
+            # Group by level
             level_1 = [c for c in campaigns if c['level'] == 1]
             level_2 = [c for c in campaigns if c['level'] == 2]
             level_3 = [c for c in campaigns if c['level'] == 3]
@@ -248,7 +247,7 @@ elif page == "Budget Structure":
                     col1, col2, col3 = st.columns([3, 1, 1])
                     
                     with col1:
-                        st.write(f"**📁 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
                         st.caption(f"Overall marketing organization | {campaign.get('is_active', 'active')}")
                     
                     with col2:
@@ -275,6 +274,24 @@ elif page == "Budget Structure":
                         with col2:
                             st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
                             st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
+                        
+                        # Budget allocation
+                        allocation = api_get(f"/api/campaigns/{campaign['id']}/budget-allocation")
+                        if allocation:
+                            st.subheader("Budget Allocation")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Budget", f"${allocation['total_budget']:,.0f}")
+                            with col2:
+                                st.metric("Allocated", f"${allocation['allocated_to_children']:,.0f}")
+                            with col3:
+                                available = allocation['available']
+                                st.metric("Available", f"${available:,.0f}", 
+                                         delta=f"{allocation['allocation_percentage']:.1f}% used",
+                                         delta_color="inverse" if allocation['over_allocated'] else "normal")
+                            
+                            if allocation['over_allocated']:
+                                st.error(f"Over-allocated by ${abs(available):,.0f}!")
                         
                         budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
                         if budget_items:
@@ -329,7 +346,7 @@ elif page == "Budget Structure":
                     
                     with col1:
                         parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
-                        st.write(f"**📂 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
                         st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
                     
                     with col2:
@@ -356,6 +373,24 @@ elif page == "Budget Structure":
                         with col2:
                             st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
                             st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
+                        
+                        # Budget allocation
+                        allocation = api_get(f"/api/campaigns/{campaign['id']}/budget-allocation")
+                        if allocation:
+                            st.subheader("Budget Allocation")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Budget", f"${allocation['total_budget']:,.0f}")
+                            with col2:
+                                st.metric("Allocated", f"${allocation['allocated_to_children']:,.0f}")
+                            with col3:
+                                available = allocation['available']
+                                st.metric("Available", f"${available:,.0f}", 
+                                         delta=f"{allocation['allocation_percentage']:.1f}% used",
+                                         delta_color="inverse" if allocation['over_allocated'] else "normal")
+                            
+                            if allocation['over_allocated']:
+                                st.error(f"Over-allocated by ${abs(available):,.0f}!")
                         
                         budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
                         if budget_items:
@@ -410,7 +445,7 @@ elif page == "Budget Structure":
                     
                     with col1:
                         parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
-                        st.write(f"**📄 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
                         st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
                     
                     with col2:
@@ -495,28 +530,37 @@ elif page == "Budget Structure":
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("Name*", placeholder="e.g., '2026 Marketing Department' or 'Customer Acquisition Programs'")
+                name = st.text_input("Name*", placeholder="e.g., '2026 Marketing Department'")
                 description = st.text_area("Description", 
-                    placeholder="Describe the purpose and scope of this department/program/project")
+                    placeholder="Describe the purpose and scope")
                 parent_options = ["None (Top Level Department)"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns]
-                parent_selection = st.selectbox("Parent", parent_options,
-                    help="Select a parent if this is a Program (Level 2) or Project (Level 3)")
+                parent_selection = st.selectbox("Parent", parent_options)
             
             with col2:
                 level = st.selectbox("Level", [1, 2, 3],
-                    format_func=lambda x: {1: "1 - Department", 2: "2 - Program", 3: "3 - Project/Campaign"}[x],
-                    help="Choose the organizational level")
+                    format_func=lambda x: {1: "1 - Department", 2: "2 - Program", 3: "3 - Project/Campaign"}[x])
                 total_budget = st.number_input("Total Budget ($)*", min_value=0.0, value=0.0, format="%.2f")
                 start_date = st.date_input("Start Date")
                 end_date = st.date_input("End Date")
             
-            # Dynamic helper text based on level
+            # Show parent budget availability
+            if parent_selection != "None (Top Level Department)":
+                parent_id = int(parent_selection.split("ID: ")[1].split(")")[0])
+                parent_allocation = api_get(f"/api/campaigns/{parent_id}/budget-allocation")
+                
+                if parent_allocation:
+                    available = parent_allocation['available']
+                    st.info(f"**Parent Budget Available:** ${available:,.0f}")
+                    
+                    if total_budget > available:
+                        st.error(f"Budget of ${total_budget:,.0f} exceeds available ${available:,.0f} by ${total_budget - available:,.0f}")
+            
             if level == 1:
-                st.info("**Level 1 - Department:** Your overall marketing organization. Usually one per fiscal year (e.g., '2026 Marketing Department').")
+                st.info("**Level 1 - Department:** Your overall marketing organization.")
             elif level == 2:
-                st.info("**Level 2 - Program:** Strategic investment areas like 'Customer Acquisition Programs', 'Infrastructure & Systems', 'Market Presence', etc.")
+                st.info("**Level 2 - Program:** Strategic investment areas like 'Customer Acquisition Programs'.")
             else:
-                st.info("**Level 3 - Project/Campaign:** Specific initiatives like 'Q1 Google Ads Campaign', 'Brand Refresh 2026', 'SOFT Conference', 'HubSpot Optimization'.")
+                st.info("**Level 3 - Project/Campaign:** Specific initiatives like 'Q1 Google Ads Campaign'.")
             
             if st.form_submit_button("Create"):
                 if not name:
@@ -527,6 +571,11 @@ elif page == "Budget Structure":
                     parent_id = None
                     if parent_selection != "None (Top Level Department)":
                         parent_id = int(parent_selection.split("ID: ")[1].split(")")[0])
+                        parent_allocation = api_get(f"/api/campaigns/{parent_id}/budget-allocation")
+                        
+                        if parent_allocation and total_budget > parent_allocation['available']:
+                            st.error(f"Cannot create: Budget exceeds parent's available budget of ${parent_allocation['available']:,.0f}")
+                            st.stop()
                     
                     data = {
                         "name": name,
@@ -543,11 +592,11 @@ elif page == "Budget Structure":
                         st.success(f"'{name}' created successfully!")
                         st.rerun()
                     else:
-                        st.error("Failed to create. Check that parent exists if selected.")
+                        st.error("Failed to create")
 
 # Budget Items Page
 elif page == "Budget Items":
-    st.header("💰 Budget Line Items")
+    st.header("Budget Line Items")
     
     tab1, tab2 = st.tabs(["View & Manage", "Create New"])
     
@@ -555,7 +604,6 @@ elif page == "Budget Items":
         items = api_get("/api/budgets/with-relations")
         
         if items:
-            # Export button
             if st.button("Export to CSV"):
                 df = pd.DataFrame(items)
                 csv = df.to_csv(index=False)
@@ -563,7 +611,6 @@ elif page == "Budget Items":
             
             st.subheader(f"Total Budget: ${sum(i['total_budget'] for i in items):,.0f}")
             
-            # Display each budget item with edit/delete options
             for item in items:
                 col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
                 
@@ -572,21 +619,20 @@ elif page == "Budget Items":
                     st.caption(f"{item.get('campaign_name', 'N/A')} | {item['category']} | {item.get('cost_center_name', 'N/A')}")
                 
                 with col2:
-                    st.write("")  # Spacing
+                    st.write("")
                 
                 with col3:
-                    if st.button("✏️ Edit", key=f"edit_budget_{item['id']}"):
+                    if st.button("Edit", key=f"edit_budget_{item['id']}"):
                         st.session_state[f'editing_budget_{item["id"]}'] = True
                 
                 with col4:
-                    if st.button("🗑️ Delete", key=f"del_budget_{item['id']}"):
+                    if st.button("Delete", key=f"del_budget_{item['id']}"):
                         if api_delete(f"/api/budgets/{item['id']}"):
                             st.success("Deleted!")
                             st.rerun()
                         else:
                             st.error("Delete failed")
                 
-                # Edit form
                 if st.session_state.get(f'editing_budget_{item["id"]}'):
                     with st.form(key=f"edit_form_budget_{item['id']}"):
                         st.subheader(f"Edit: {item['name']}")
@@ -601,7 +647,7 @@ elif page == "Budget Items":
                         
                         col_save, col_cancel = st.columns(2)
                         with col_save:
-                            if st.form_submit_button("💾 Save Changes"):
+                            if st.form_submit_button("Save Changes"):
                                 update_data = {
                                     "name": new_name,
                                     "category": new_category,
@@ -616,7 +662,7 @@ elif page == "Budget Items":
                                     st.error("Update failed")
                         
                         with col_cancel:
-                            if st.form_submit_button("❌ Cancel"):
+                            if st.form_submit_button("Cancel"):
                                 del st.session_state[f'editing_budget_{item["id"]}']
                                 st.rerun()
                     
@@ -647,7 +693,7 @@ elif page == "Budget Items":
 
 # Expenses Page
 elif page == "Expenses":
-    st.header("💸 Expense Tracking")
+    st.header("Expense Tracking")
     
     tab1, tab2 = st.tabs(["View & Manage Expenses", "Record New Expense"])
     
@@ -655,7 +701,6 @@ elif page == "Expenses":
         expenses = api_get("/api/expenses/with-details")
         
         if expenses:
-            # Export and summary
             col1, col2 = st.columns([1, 3])
             with col1:
                 if st.button("Export to CSV"):
@@ -667,7 +712,6 @@ elif page == "Expenses":
             
             st.markdown("---")
             
-            # Display each expense with edit/delete
             for exp in expenses:
                 col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
                 
@@ -681,21 +725,20 @@ elif page == "Expenses":
                     st.caption(" | ".join(caption_parts))
                 
                 with col2:
-                    st.write("")  # Spacing
+                    st.write("")
                 
                 with col3:
-                    if st.button("✏️ Edit", key=f"edit_exp_{exp['id']}"):
+                    if st.button("Edit", key=f"edit_exp_{exp['id']}"):
                         st.session_state[f'editing_expense_{exp["id"]}'] = True
                 
                 with col4:
-                    if st.button("🗑️ Delete", key=f"del_exp_{exp['id']}"):
+                    if st.button("Delete", key=f"del_exp_{exp['id']}"):
                         if api_delete(f"/api/expenses/{exp['id']}"):
                             st.success("Deleted!")
                             st.rerun()
                         else:
                             st.error("Delete failed")
                 
-                # Edit form
                 if st.session_state.get(f'editing_expense_{exp["id"]}'):
                     with st.form(key=f"edit_form_expense_{exp['id']}"):
                         st.subheader(f"Edit Expense: ${exp['amount']:,.2f}")
@@ -712,7 +755,7 @@ elif page == "Expenses":
                         
                         col_save, col_cancel = st.columns(2)
                         with col_save:
-                            if st.form_submit_button("💾 Save Changes"):
+                            if st.form_submit_button("Save Changes"):
                                 update_data = {
                                     "amount": float(new_amount),
                                     "expense_date": new_date.isoformat(),
@@ -729,7 +772,7 @@ elif page == "Expenses":
                                     st.error("Update failed")
                         
                         with col_cancel:
-                            if st.form_submit_button("❌ Cancel"):
+                            if st.form_submit_button("Cancel"):
                                 del st.session_state[f'editing_expense_{exp["id"]}']
                                 st.rerun()
                     
@@ -783,9 +826,8 @@ elif page == "Expenses":
 
 # Budget vs Actual Page
 elif page == "Budget vs Actual":
-    st.header("📈 Budget vs Actual Variance Analysis")
+    st.header("Budget vs Actual Variance Analysis")
     
-    # Month/Year selection
     col1, col2 = st.columns(2)
     with col1:
         selected_year = st.selectbox("Year", [2024, 2025, 2026], index=1)
@@ -793,19 +835,16 @@ elif page == "Budget vs Actual":
         selected_month = st.selectbox("Month", range(1, 13), 
                                      format_func=lambda x: month_name[x])
     
-    # Get budget items
     budget_items = api_get("/api/budgets/with-relations")
     
     if budget_items:
         variance_data = []
         
         for item in budget_items:
-            # Get monthly budget
             monthly_budget = 0.0
             if item.get('monthly_budget') and str(selected_month) in item['monthly_budget']:
                 monthly_budget = float(item['monthly_budget'][str(selected_month)])
             
-            # Get actual expenses for this month
             expenses = api_get(f"/api/expenses/month/{selected_year}/{selected_month}")
             item_expenses = [e for e in expenses if e.get('budget_item_id') == item['id']]
             actual = sum(e.get('amount', 0) for e in item_expenses)
@@ -821,13 +860,12 @@ elif page == "Budget vs Actual":
                 "Actual": actual,
                 "Variance": variance,
                 "Variance %": variance_pct,
-                "Status": "🔴 Over" if variance > 0 else "🟢 Under" if variance < 0 else "✅ On Track"
+                "Status": "Over" if variance > 0 else "Under" if variance < 0 else "On Track"
             })
         
         if variance_data:
             df = pd.DataFrame(variance_data)
             
-            # Summary metrics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Total Budgeted", f"${df['Budgeted'].sum():,.0f}")
@@ -840,15 +878,12 @@ elif page == "Budget vs Actual":
                 over_budget = len(df[df['Variance'] > 0])
                 st.metric("Items Over Budget", over_budget)
             
-            # Variance chart
             st.subheader("Variance by Budget Item")
             fig = px.bar(df, x='Budget Item', y='Variance', color='Status',
-                        color_discrete_map={"🔴 Over": "#ff4b4b", "🟢 Under": "#00cc00", "✅ On Track": "#0068c9"})
+                        color_discrete_map={"Over": "#ff4b4b", "Under": "#00cc00", "On Track": "#0068c9"})
             st.plotly_chart(fig, use_container_width=True)
             
-            # Detailed table
             st.subheader("Detailed Variance Report")
-            # Format currency columns
             for col in ['Budgeted', 'Actual', 'Variance']:
                 df[col] = df[col].apply(lambda x: f"${x:,.2f}")
             df['Variance %'] = df['Variance %'].apply(lambda x: f"{x:.1f}%")
@@ -857,7 +892,7 @@ elif page == "Budget vs Actual":
 
 # ROI Tracking Page
 elif page == "ROI Tracking":
-    st.header("📊 ROI Tracking & Campaign Performance")
+    st.header("ROI Tracking & Campaign Performance")
     
     tab1, tab2 = st.tabs(["View & Manage ROI", "Record New ROI"])
     
@@ -869,7 +904,6 @@ elif page == "ROI Tracking":
             
             df = pd.DataFrame(roi_metrics)
             
-            # Summary metrics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 total_cost = df['total_cost'].sum()
@@ -884,7 +918,6 @@ elif page == "ROI Tracking":
                 positive_roi = len(df[df['roi_percentage'] > 0])
                 st.metric("Positive ROI Campaigns", f"{positive_roi}/{len(df)}")
             
-            # ROI by campaign chart
             st.subheader("ROI by Campaign")
             fig = px.bar(df, x='campaign_name', y='roi_percentage', 
                         color='roi_percentage',
@@ -892,7 +925,6 @@ elif page == "ROI Tracking":
                         labels={'roi_percentage': 'ROI %', 'campaign_name': 'Campaign'})
             st.plotly_chart(fig, use_container_width=True)
             
-            # Individual ROI metrics with edit/delete
             st.subheader("ROI Metrics Details")
             for roi in roi_metrics:
                 col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
@@ -905,18 +937,17 @@ elif page == "ROI Tracking":
                     st.write("")
                 
                 with col3:
-                    if st.button("✏️ Edit", key=f"edit_roi_{roi['id']}"):
+                    if st.button("Edit", key=f"edit_roi_{roi['id']}"):
                         st.session_state[f'editing_roi_{roi["id"]}'] = True
                 
                 with col4:
-                    if st.button("🗑️ Delete", key=f"del_roi_{roi['id']}"):
+                    if st.button("Delete", key=f"del_roi_{roi['id']}"):
                         if api_delete(f"/api/roi/{roi['id']}"):
                             st.success("Deleted!")
                             st.rerun()
                         else:
                             st.error("Delete failed")
                 
-                # Edit form
                 if st.session_state.get(f'editing_roi_{roi["id"]}'):
                     with st.form(key=f"edit_form_roi_{roi['id']}"):
                         st.subheader(f"Edit ROI: {roi.get('campaign_name', 'N/A')}")
@@ -930,7 +961,7 @@ elif page == "ROI Tracking":
                         
                         col_save, col_cancel = st.columns(2)
                         with col_save:
-                            if st.form_submit_button("💾 Save Changes"):
+                            if st.form_submit_button("Save Changes"):
                                 update_data = {
                                     "total_cost": float(new_cost),
                                     "revenue_attributed": float(new_revenue),
@@ -944,7 +975,7 @@ elif page == "ROI Tracking":
                                     st.error("Update failed")
                         
                         with col_cancel:
-                            if st.form_submit_button("❌ Cancel"):
+                            if st.form_submit_button("Cancel"):
                                 del st.session_state[f'editing_roi_{roi["id"]}']
                                 st.rerun()
                     
@@ -972,7 +1003,6 @@ elif page == "ROI Tracking":
                     attribution = st.selectbox("Attribution Method", 
                                              ["last_touch", "first_touch", "linear", "time_decay"])
                 
-                # Performance metrics
                 st.subheader("Performance Metrics (Optional)")
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -1019,7 +1049,7 @@ elif page == "ROI Tracking":
 
 # Cost Centers Page
 elif page == "Cost Centers":
-    st.header("🏢 Cost Center Management")
+    st.header("Cost Center Management")
     
     tab1, tab2 = st.tabs(["View & Manage", "Create New"])
     
@@ -1031,33 +1061,30 @@ elif page == "Cost Centers":
                 col1, col2, col3 = st.columns([3, 1, 1])
                 
                 with col1:
-                    st.write(f"**🏢 {cc['name']}** ({cc['code']})")
+                    st.write(f"**{cc['name']}** ({cc['code']})")
                     st.caption(f"{cc['department']} | {'Active' if cc['is_active'] else 'Inactive'}")
                 
                 with col2:
-                    if st.button("✏️ Edit", key=f"edit_cc_{cc['id']}"):
+                    if st.button("Edit", key=f"edit_cc_{cc['id']}"):
                         st.session_state[f'editing_cc_{cc["id"]}'] = True
                 
                 with col3:
-                    if st.button("🗑️ Delete", key=f"del_cc_{cc['id']}"):
-                        # Check if cost center has budget items
+                    if st.button("Delete", key=f"del_cc_{cc['id']}"):
                         budget_items = api_get(f"/api/budgets/cost-center/{cc['id']}")
                         if budget_items:
-                            st.error(f"Cannot delete: Cost center has {len(budget_items)} budget items")
+                            st.error(f"Cannot delete: Has {len(budget_items)} budget items")
                         elif api_delete(f"/api/cost-centers/{cc['id']}"):
                             st.success("Cost center deactivated!")
                             st.rerun()
                         else:
                             st.error("Delete failed")
                 
-                # Show details in expander
                 with st.expander("View Details"):
                     st.write(f"**Code:** {cc['code']}")
                     st.write(f"**Department:** {cc['department']}")
                     if cc.get('description'):
                         st.write(f"**Description:** {cc['description']}")
                 
-                # Edit form
                 if st.session_state.get(f'editing_cc_{cc["id"]}'):
                     with st.form(key=f"edit_form_cc_{cc['id']}"):
                         st.subheader(f"Edit: {cc['name']}")
@@ -1072,7 +1099,7 @@ elif page == "Cost Centers":
                         
                         col_save, col_cancel = st.columns(2)
                         with col_save:
-                            if st.form_submit_button("💾 Save Changes"):
+                            if st.form_submit_button("Save Changes"):
                                 update_data = {
                                     "name": new_name,
                                     "code": new_code,
@@ -1087,7 +1114,7 @@ elif page == "Cost Centers":
                                     st.error("Update failed - code may already exist")
                         
                         with col_cancel:
-                            if st.form_submit_button("❌ Cancel"):
+                            if st.form_submit_button("Cancel"):
                                 del st.session_state[f'editing_cc_{cc["id"]}']
                                 st.rerun()
                     
@@ -1131,8 +1158,8 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### API Status")
 try:
     if requests.get(f"{API_BASE_URL}/health").status_code == 200:
-        st.sidebar.success("✅ API Connected")
+        st.sidebar.success("API Connected")
     else:
-        st.sidebar.error("❌ API Error")
+        st.sidebar.error("API Error")
 except:
-    st.sidebar.error("❌ API Offline")
+    st.sidebar.error("API Offline")

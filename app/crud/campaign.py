@@ -48,3 +48,25 @@ def get_campaign_hierarchy(db: Session, root_campaign_id: int) -> Optional[Campa
     """Get a campaign with all its children (recursive)"""
     campaign = db.query(Campaign).filter(Campaign.id == root_campaign_id).first()
     return campaign  # SQLAlchemy will automatically load children via relationships
+
+def get_budget_allocation(db: Session, campaign_id: int):
+    """Calculate how much of a campaign's budget is allocated to children"""
+    campaign = get_campaign(db, campaign_id)
+    if not campaign:
+        return None
+    
+    # Get all direct children
+    children = get_campaigns_by_parent(db, campaign_id)
+    
+    # Sum their budgets
+    allocated = sum(child.total_budget for child in children)
+    
+    return {
+        "campaign_id": campaign_id,
+        "campaign_name": campaign.name,
+        "total_budget": campaign.total_budget,
+        "allocated_to_children": allocated,
+        "available": campaign.total_budget - allocated,
+        "allocation_percentage": (allocated / campaign.total_budget * 100) if campaign.total_budget > 0 else 0,
+        "over_allocated": allocated > campaign.total_budget
+    }
