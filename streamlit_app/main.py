@@ -15,7 +15,7 @@ st.title("💼 Marketing Budget Management System")
 # Sidebar navigation
 page = st.sidebar.selectbox(
     "Navigate to:",
-    ["Getting Started", "Dashboard", "Campaigns", "Budget Items", "Expenses", 
+    ["Getting Started", "Dashboard", "Budget Structure", "Budget Items", "Expenses", 
      "Budget vs Actual", "ROI Tracking", "Cost Centers"]
 )
 
@@ -49,61 +49,135 @@ if page == "Getting Started":
     st.header("Getting Started with Budget Management")
     
     st.markdown("""
-    ## Complete Budget Management Workflow
+    ## Understanding the Budget Structure
     
-    ### Step 1: Set Up Cost Centers
-    **What:** Functional areas for tracking spending (like QuickBooks Classes)  
-    **Examples:** Digital Marketing (DM001), Events (EV001), Content (CC001)  
-    **Why:** Report spending by area and assign accountability
+    This system uses a **3-level hierarchy** to organize your marketing budget:
     
-    ### Step 2: Create Campaign Hierarchy
-    **Structure:**
-    - **Level 1:** Department (e.g., "2026 Marketing Department")
-    - **Level 2:** Campaign Category (e.g., "Digital Marketing")  
-    - **Level 3:** Specific Campaigns (e.g., "Q1 Google Ads")
+    ### Level 1: Department
+    The top-level container - typically your entire marketing organization.
+    - **Example:** "2026 Marketing Department"
+    - **Purpose:** Overall marketing budget and high-level reporting
     
-    ### Step 3: Add Budget Line Items
-    - Specific expenses within campaigns
-    - Include monthly distribution
-    - Assign category and cost center
+    ### Level 2: Program
+    Strategic areas where marketing invests. Programs can be customer-facing or internal.
+    - **Customer Acquisition Programs** - Lead generation, campaigns, advertising
+    - **Infrastructure & Systems** - Brand refresh, website, CRM, tools
+    - **Market Presence** - Trade shows, PR, industry engagement
+    - **Product Marketing** - Product launches, sales enablement
+    - **Customer Retention** - Customer marketing, success programs
     
-    ### Step 4: Track Actual Expenses
-    - Record real spending as it happens
-    - Link to budget line items
-    - Track vendor, invoice, payment method
-    
-    ### Step 5: Monitor Budget vs Actual
-    - Monthly variance analysis
-    - Identify overspending early
-    - Adjust forecasts based on actuals
-    
-    ### Step 6: Calculate ROI
-    - Attribute revenue to campaigns
-    - Track performance metrics (leads, conversions)
-    - Determine campaign effectiveness
+    ### Level 3: Project/Campaign
+    Specific initiatives within each program.
+    - Under Customer Acquisition: "Q1 Google Ads", "LinkedIn ABM Campaign"
+    - Under Infrastructure: "Brand Refresh 2026", "HubSpot Workflow Optimization"
+    - Under Market Presence: "SOFT Conference 2026", "Industry Awards"
     
     ---
     
-    ## UTAK Example Structure
+    ## Setup Workflow
     
-    ```
-    2026 Marketing ($500K)
-    ├── Digital Marketing ($200K)
-    │   └── Q1 Google Ads ($25K)
-    │       └── ACTUAL: $8,200 spent in Jan (Budget: $8,000)
-    │       └── ROI: 250% (Generated $28,500 revenue)
-    ├── Trade Shows ($150K)
-    │   └── SOFT Conference ($45K)
-    │       └── ACTUAL: $42,000 spent
-    │       └── ROI: 180% (3 new contracts)
-    ```
+    ### Step 1: Create Cost Centers (15 minutes)
+    Cost centers are how you track spending by functional area - they're like QuickBooks "Classes".
     
-    **Cost Centers:** DM001 (Digital), EV001 (Events), CC001 (Content), RD001 (R&D Marketing)
+    **Recommended cost centers for lab/manufacturing companies:**
+    - **DM001** - Digital Marketing
+    - **EV001** - Events & Trade Shows
+    - **CM001** - Content Marketing
+    - **TM001** - Technical Marketing
+    - **PM001** - Product Marketing
+    - **MT001** - Marketing Technology
+    
+    ### Step 2: Create Your Department (5 minutes)
+    Create your Level 1 container:
+    - Name: "2026 Marketing Department" (or your fiscal year)
+    - Level: 1
+    - Total Budget: Your annual marketing budget
+    
+    ### Step 3: Create Programs (15 minutes)
+    Create 4-6 Level 2 programs that match how you think about marketing:
+    - Each program should have a clear strategic purpose
+    - Assign budget to each program
+    - Parent: Select your Department
+    - Level: 2
+    
+    ### Step 4: Create Projects/Campaigns (30 minutes)
+    Under each program, create specific initiatives:
+    - These are your actual campaigns, projects, or initiatives
+    - Parent: Select the relevant Program
+    - Level: 3
+    
+    ### Step 5: Add Budget Line Items (Ongoing)
+    For each project, create detailed budget line items:
+    - Specific expenses (Google Ads, booth rental, designer fees)
+    - Assign to appropriate cost center
+    - Include monthly distribution if known
+    - Categorize (Digital Ads, Personnel, Events, Materials)
+    
+    ### Step 6: Track Expenses (Monthly)
+    Record actual spending as it occurs:
+    - Link to budget line items
+    - Include vendor, invoice, payment method
+    - System automatically calculates variance
+    
+    ### Step 7: Record ROI (Quarterly)
+    For customer-facing campaigns:
+    - Attribute revenue or results
+    - Track performance metrics (leads, conversions)
+    - Calculate ROI automatically
+    
+    ---
+    
+    ## Recommended Initial Programs for UTAK
+    
+    **1. Customer Acquisition Programs** ($200K)
+    - Purpose: Generate and nurture leads
+    - Projects: Google Ads campaigns, LinkedIn ABM, webinars, trade show lead gen
+    
+    **2. Infrastructure & Systems** ($100K)
+    - Purpose: Marketing tools, systems, and capabilities
+    - Projects: Brand refresh, website redesign, HubSpot optimization, CRM integration
+    
+    **3. Market Presence & PR** ($120K)
+    - Purpose: Industry visibility and reputation
+    - Projects: SOFT Conference, industry awards, PR agency, analyst relations
+    
+    **4. Product Marketing** ($50K)
+    - Purpose: Product launches and sales enablement
+    - Projects: New product launches, sales collateral, technical documentation
+    
+    **5. Technical Marketing** ($30K)
+    - Purpose: Scientific and technical content
+    - Projects: Application notes, white papers, technical webinars, laboratory demos
+    
+    ---
+    
+    ## Key Concepts
+    
+    **Program vs Project:**
+    - **Programs** are ongoing strategic areas (like "Customer Acquisition")
+    - **Projects** are specific initiatives with start/end dates (like "Q1 Google Ads")
+    
+    **When to create a new Project:**
+    - Has a specific goal or deliverable
+    - Has defined start and end dates
+    - Can measure success/ROI
+    - Budget is $5K+ (smaller items can be line items only)
+    
+    **Cost Center vs Program:**
+    - **Cost Centers** = WHO owns it (Digital team, Events team)
+    - **Programs** = WHAT strategic goal it supports (Acquisition, Infrastructure)
+    - Budget items get assigned to BOTH
     
     ---
     
     ## QuickBooks Integration
-    Export to CSV from Budget Items or Expenses pages, then import into QuickBooks.
+    
+    Export your budget items or expenses to CSV from their respective pages. In QuickBooks:
+    1. Import the CSV file
+    2. Map cost center codes to QuickBooks Classes
+    3. Map categories to General Ledger accounts
+    
+    This keeps your detailed planning here while maintaining proper accounting in QuickBooks.
     """)
 
 # Dashboard Page  
@@ -153,127 +227,305 @@ elif page == "Dashboard":
             st.plotly_chart(fig, use_container_width=True)
 
 # Campaigns Page
-elif page == "Campaigns":
-    st.header("📁 Campaign Management")
+# Budget Structure Page (formerly Campaigns)
+elif page == "Budget Structure":
+    st.header("📁 Budget Structure (Department → Programs → Projects)")
     
-    tab1, tab2 = st.tabs(["View & Manage Campaigns", "Create Campaign"])
+    tab1, tab2 = st.tabs(["View Structure", "Create New"])
     
     with tab1:
         campaigns = api_get("/api/campaigns/")
         
         if campaigns:
-            for campaign in campaigns:
-                col1, col2, col3 = st.columns([3, 1, 1])
-                
-                with col1:
-                    st.write(f"**📁 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
-                    st.caption(f"Level {campaign['level']} | {campaign.get('is_active', 'active')}")
-                
-                with col2:
-                    if st.button("✏️ Edit", key=f"edit_camp_{campaign['id']}"):
-                        st.session_state[f'editing_campaign_{campaign["id"]}'] = True
-                
-                with col3:
-                    if st.button("🗑️ Delete", key=f"del_camp_{campaign['id']}"):
-                        # Check if campaign has budget items
-                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                        if budget_items:
-                            st.error(f"Cannot delete: Campaign has {len(budget_items)} budget items")
-                        elif api_delete(f"/api/campaigns/{campaign['id']}"):
-                            st.success("Deleted!")
-                            st.rerun()
-                        else:
-                            st.error("Delete failed")
-                
-                # Show campaign details
-                with st.expander("View Details"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write(f"**ID:** {campaign['id']}")
-                        st.write(f"**Level:** {campaign['level']}")
-                        if campaign.get('description'):
-                            st.write(f"**Description:** {campaign['description']}")
-                    with col2:
-                        st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
-                        st.write(f"**Start:** {campaign.get('start_date', 'N/A')}")
-                        st.write(f"**End:** {campaign.get('end_date', 'N/A')}")
+            # Group by level for better organization
+            level_1 = [c for c in campaigns if c['level'] == 1]
+            level_2 = [c for c in campaigns if c['level'] == 2]
+            level_3 = [c for c in campaigns if c['level'] == 3]
+            
+            if level_1:
+                st.subheader("Level 1: Department")
+                for campaign in level_1:
+                    col1, col2, col3 = st.columns([3, 1, 1])
                     
-                    # Show associated budget items
-                    budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                    if budget_items:
-                        st.write("**Budget Items:**")
-                        for item in budget_items:
-                            st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
-                
-                # Edit form
-                if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
-                    with st.form(key=f"edit_form_campaign_{campaign['id']}"):
-                        st.subheader(f"Edit: {campaign['name']}")
-                        
+                    with col1:
+                        st.write(f"**📁 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.caption(f"Overall marketing organization | {campaign.get('is_active', 'active')}")
+                    
+                    with col2:
+                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
+                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
+                    
+                    with col3:
+                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
+                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                            if budget_items:
+                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
+                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
+                                st.success("Deleted!")
+                                st.rerun()
+                            else:
+                                st.error("Delete failed")
+                    
+                    with st.expander("View Details"):
                         col1, col2 = st.columns(2)
                         with col1:
-                            new_name = st.text_input("Name", value=campaign['name'])
-                            new_desc = st.text_area("Description", value=campaign.get('description', ''))
-                            new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
+                            st.write(f"**ID:** {campaign['id']}")
+                            if campaign.get('description'):
+                                st.write(f"**Description:** {campaign['description']}")
                         with col2:
-                            new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
-                                                     index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
-                            new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
-                            new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
+                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
                         
-                        col_save, col_cancel = st.columns(2)
-                        with col_save:
-                            if st.form_submit_button("💾 Save Changes"):
-                                update_data = {
-                                    "name": new_name,
-                                    "description": new_desc,
-                                    "total_budget": float(new_budget),
-                                    "is_active": new_status,
-                                    "start_date": new_start.isoformat(),
-                                    "end_date": new_end.isoformat()
-                                }
-                                if api_put(f"/api/campaigns/{campaign['id']}", update_data):
-                                    st.success("Updated!")
+                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                        if budget_items:
+                            st.write("**Budget Items:**")
+                            for item in budget_items:
+                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
+                    
+                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
+                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
+                            st.subheader(f"Edit: {campaign['name']}")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                new_name = st.text_input("Name", value=campaign['name'])
+                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
+                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
+                            with col2:
+                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
+                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
+                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                            
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                if st.form_submit_button("Save Changes"):
+                                    update_data = {
+                                        "name": new_name,
+                                        "description": new_desc,
+                                        "total_budget": float(new_budget),
+                                        "is_active": new_status,
+                                        "start_date": new_start.isoformat(),
+                                        "end_date": new_end.isoformat()
+                                    }
+                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
+                                        st.success("Updated!")
+                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                        st.rerun()
+                                    else:
+                                        st.error("Update failed")
+                            
+                            with col_cancel:
+                                if st.form_submit_button("Cancel"):
                                     del st.session_state[f'editing_campaign_{campaign["id"]}']
                                     st.rerun()
-                                else:
-                                    st.error("Update failed")
                         
-                        with col_cancel:
-                            if st.form_submit_button("❌ Cancel"):
-                                del st.session_state[f'editing_campaign_{campaign["id"]}']
-                                st.rerun()
+                        st.markdown("---")
+            
+            if level_2:
+                st.subheader("Level 2: Programs")
+                for campaign in level_2:
+                    col1, col2, col3 = st.columns([3, 1, 1])
                     
-                    st.markdown("---")
+                    with col1:
+                        parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
+                        st.write(f"**📂 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
+                    
+                    with col2:
+                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
+                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
+                    
+                    with col3:
+                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
+                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                            if budget_items:
+                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
+                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
+                                st.success("Deleted!")
+                                st.rerun()
+                            else:
+                                st.error("Delete failed")
+                    
+                    with st.expander("View Details"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**ID:** {campaign['id']}")
+                            if campaign.get('description'):
+                                st.write(f"**Description:** {campaign['description']}")
+                        with col2:
+                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
+                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
+                        
+                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                        if budget_items:
+                            st.write("**Budget Items:**")
+                            for item in budget_items:
+                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
+                    
+                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
+                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
+                            st.subheader(f"Edit: {campaign['name']}")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                new_name = st.text_input("Name", value=campaign['name'])
+                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
+                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
+                            with col2:
+                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
+                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
+                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                            
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                if st.form_submit_button("Save Changes"):
+                                    update_data = {
+                                        "name": new_name,
+                                        "description": new_desc,
+                                        "total_budget": float(new_budget),
+                                        "is_active": new_status,
+                                        "start_date": new_start.isoformat(),
+                                        "end_date": new_end.isoformat()
+                                    }
+                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
+                                        st.success("Updated!")
+                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                        st.rerun()
+                                    else:
+                                        st.error("Update failed")
+                            
+                            with col_cancel:
+                                if st.form_submit_button("Cancel"):
+                                    del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                    st.rerun()
+                        
+                        st.markdown("---")
+            
+            if level_3:
+                st.subheader("Level 3: Projects/Campaigns")
+                for campaign in level_3:
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
+                        st.write(f"**📄 {campaign['name']}** - ${campaign['total_budget']:,.0f}")
+                        st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
+                    
+                    with col2:
+                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
+                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
+                    
+                    with col3:
+                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
+                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                            if budget_items:
+                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
+                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
+                                st.success("Deleted!")
+                                st.rerun()
+                            else:
+                                st.error("Delete failed")
+                    
+                    with st.expander("View Details"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write(f"**ID:** {campaign['id']}")
+                            if campaign.get('description'):
+                                st.write(f"**Description:** {campaign['description']}")
+                        with col2:
+                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
+                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
+                        
+                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
+                        if budget_items:
+                            st.write("**Budget Items:**")
+                            for item in budget_items:
+                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
+                    
+                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
+                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
+                            st.subheader(f"Edit: {campaign['name']}")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                new_name = st.text_input("Name", value=campaign['name'])
+                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
+                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
+                            with col2:
+                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
+                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
+                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                            
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                if st.form_submit_button("Save Changes"):
+                                    update_data = {
+                                        "name": new_name,
+                                        "description": new_desc,
+                                        "total_budget": float(new_budget),
+                                        "is_active": new_status,
+                                        "start_date": new_start.isoformat(),
+                                        "end_date": new_end.isoformat()
+                                    }
+                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
+                                        st.success("Updated!")
+                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                        st.rerun()
+                                    else:
+                                        st.error("Update failed")
+                            
+                            with col_cancel:
+                                if st.form_submit_button("Cancel"):
+                                    del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                    st.rerun()
+                        
+                        st.markdown("---")
         else:
-            st.info("No campaigns found")
+            st.info("No structure created yet. Start by creating your Department (Level 1).")
     
     with tab2:
         campaigns = api_get("/api/campaigns/")
         
         with st.form("create_campaign"):
+            st.subheader("Create New Budget Structure Item")
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                name = st.text_input("Campaign Name*")
-                description = st.text_area("Description")
-                parent_options = ["None (Root Campaign)"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns]
-                parent_selection = st.selectbox("Parent Campaign", parent_options)
+                name = st.text_input("Name*", placeholder="e.g., '2026 Marketing Department' or 'Customer Acquisition Programs'")
+                description = st.text_area("Description", 
+                    placeholder="Describe the purpose and scope of this department/program/project")
+                parent_options = ["None (Top Level Department)"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns]
+                parent_selection = st.selectbox("Parent", parent_options,
+                    help="Select a parent if this is a Program (Level 2) or Project (Level 3)")
             
             with col2:
-                level = st.number_input("Level", min_value=1, max_value=5, value=1)
-                total_budget = st.number_input("Total Budget ($)", min_value=0.0, value=0.0, format="%.2f")
+                level = st.selectbox("Level", [1, 2, 3],
+                    format_func=lambda x: {1: "1 - Department", 2: "2 - Program", 3: "3 - Project/Campaign"}[x],
+                    help="Choose the organizational level")
+                total_budget = st.number_input("Total Budget ($)*", min_value=0.0, value=0.0, format="%.2f")
                 start_date = st.date_input("Start Date")
                 end_date = st.date_input("End Date")
             
-            if st.form_submit_button("Create Campaign"):
+            # Dynamic helper text based on level
+            if level == 1:
+                st.info("**Level 1 - Department:** Your overall marketing organization. Usually one per fiscal year (e.g., '2026 Marketing Department').")
+            elif level == 2:
+                st.info("**Level 2 - Program:** Strategic investment areas like 'Customer Acquisition Programs', 'Infrastructure & Systems', 'Market Presence', etc.")
+            else:
+                st.info("**Level 3 - Project/Campaign:** Specific initiatives like 'Q1 Google Ads Campaign', 'Brand Refresh 2026', 'SOFT Conference', 'HubSpot Optimization'.")
+            
+            if st.form_submit_button("Create"):
                 if not name:
-                    st.error("Campaign name is required")
+                    st.error("Name is required")
                 elif total_budget < 0:
                     st.error("Budget cannot be negative")
                 else:
                     parent_id = None
-                    if parent_selection != "None (Root Campaign)":
+                    if parent_selection != "None (Top Level Department)":
                         parent_id = int(parent_selection.split("ID: ")[1].split(")")[0])
                     
                     data = {
@@ -288,10 +540,10 @@ elif page == "Campaigns":
                     }
                     
                     if api_post("/api/campaigns/", data):
-                        st.success(f"Campaign '{name}' created!")
+                        st.success(f"'{name}' created successfully!")
                         st.rerun()
                     else:
-                        st.error("Failed to create campaign")
+                        st.error("Failed to create. Check that parent exists if selected.")
 
 # Budget Items Page
 elif page == "Budget Items":
@@ -765,32 +1017,114 @@ elif page == "ROI Tracking":
         else:
             st.warning("Create campaigns first")
 
-# Cost Centers Page (keeping existing)
+# Cost Centers Page
 elif page == "Cost Centers":
     st.header("🏢 Cost Center Management")
     
-    tab1, tab2 = st.tabs(["View", "Create"])
+    tab1, tab2 = st.tabs(["View & Manage", "Create New"])
     
     with tab1:
         cost_centers = api_get("/api/cost-centers/active")
-        for cc in cost_centers:
-            with st.expander(f"🏢 {cc['name']} ({cc['code']})"):
-                st.write(f"**Department:** {cc['department']}")
-                if cc.get('description'):
-                    st.write(f"**Description:** {cc['description']}")
+        
+        if cost_centers:
+            for cc in cost_centers:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    st.write(f"**🏢 {cc['name']}** ({cc['code']})")
+                    st.caption(f"{cc['department']} | {'Active' if cc['is_active'] else 'Inactive'}")
+                
+                with col2:
+                    if st.button("✏️ Edit", key=f"edit_cc_{cc['id']}"):
+                        st.session_state[f'editing_cc_{cc["id"]}'] = True
+                
+                with col3:
+                    if st.button("🗑️ Delete", key=f"del_cc_{cc['id']}"):
+                        # Check if cost center has budget items
+                        budget_items = api_get(f"/api/budgets/cost-center/{cc['id']}")
+                        if budget_items:
+                            st.error(f"Cannot delete: Cost center has {len(budget_items)} budget items")
+                        elif api_delete(f"/api/cost-centers/{cc['id']}"):
+                            st.success("Cost center deactivated!")
+                            st.rerun()
+                        else:
+                            st.error("Delete failed")
+                
+                # Show details in expander
+                with st.expander("View Details"):
+                    st.write(f"**Code:** {cc['code']}")
+                    st.write(f"**Department:** {cc['department']}")
+                    if cc.get('description'):
+                        st.write(f"**Description:** {cc['description']}")
+                
+                # Edit form
+                if st.session_state.get(f'editing_cc_{cc["id"]}'):
+                    with st.form(key=f"edit_form_cc_{cc['id']}"):
+                        st.subheader(f"Edit: {cc['name']}")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_name = st.text_input("Name", value=cc['name'])
+                            new_code = st.text_input("Code", value=cc['code'])
+                        with col2:
+                            new_dept = st.text_input("Department", value=cc['department'])
+                            new_desc = st.text_area("Description", value=cc.get('description', ''))
+                        
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            if st.form_submit_button("💾 Save Changes"):
+                                update_data = {
+                                    "name": new_name,
+                                    "code": new_code,
+                                    "department": new_dept,
+                                    "description": new_desc
+                                }
+                                if api_put(f"/api/cost-centers/{cc['id']}", update_data):
+                                    st.success("Updated!")
+                                    del st.session_state[f'editing_cc_{cc["id"]}']
+                                    st.rerun()
+                                else:
+                                    st.error("Update failed - code may already exist")
+                        
+                        with col_cancel:
+                            if st.form_submit_button("❌ Cancel"):
+                                del st.session_state[f'editing_cc_{cc["id"]}']
+                                st.rerun()
+                    
+                    st.markdown("---")
+        else:
+            st.info("No cost centers found")
     
     with tab2:
         with st.form("create_cc"):
-            name = st.text_input("Name*")
-            code = st.text_input("Code*")
-            dept = st.text_input("Department", "Marketing")
-            desc = st.text_area("Description")
+            st.subheader("Create New Cost Center")
             
-            if st.form_submit_button("Create"):
-                data = {"name": name, "code": code, "department": dept, "description": desc}
-                if api_post("/api/cost-centers/", data):
-                    st.success("Created!")
-                    st.rerun()
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                name = st.text_input("Name*", placeholder="e.g., Digital Marketing")
+                code = st.text_input("Code*", placeholder="e.g., DM001")
+            
+            with col2:
+                dept = st.text_input("Department", value="Marketing")
+                desc = st.text_area("Description", 
+                    placeholder="What types of expenses belong to this cost center?")
+            
+            if st.form_submit_button("Create Cost Center"):
+                if not name or not code:
+                    st.error("Name and Code are required")
+                else:
+                    data = {
+                        "name": name,
+                        "code": code,
+                        "department": dept,
+                        "description": desc
+                    }
+                    if api_post("/api/cost-centers/", data):
+                        st.success(f"Cost center '{name}' created!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to create - code may already exist")
 
 # Footer
 st.sidebar.markdown("---")
