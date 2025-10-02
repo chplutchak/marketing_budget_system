@@ -1,0 +1,21 @@
+services:
+  # Web service - runs both FastAPI and Streamlit
+  - type: web
+    name: marketing-budget-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT & streamlit run streamlit_app/main.py --server.port 8501 --server.address 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: marketing-budget-db
+          property: connectionString
+      - key: DEBUG
+        value: false
+
+databases:
+  - name: marketing-budget-db
+    databaseName: marketing_budget
+    user: marketing_user
