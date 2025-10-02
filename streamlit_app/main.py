@@ -5,8 +5,9 @@ from datetime import date, datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from calendar import month_name
+import os
 
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Marketing Budget Management", page_icon="💼", layout="wide")
 st.title("💼 Marketing Budget Management System")
