@@ -18,6 +18,7 @@ class CampaignCreate(CampaignBase):
 class CampaignUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    parent_id: Optional[int] = None 
     total_budget: Optional[float] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
