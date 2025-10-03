@@ -226,97 +226,77 @@ elif page == "Dashboard":
             fig = px.pie(values=list(cat_actual.values()), names=list(cat_actual.keys()))
             st.plotly_chart(fig, use_container_width=True)
 
-# Budget Structure Page
+# Budget Structure Page - COMPLETE REPLACEMENT
 elif page == "Budget Structure":
-    st.header("Budget Structure (Department → Programs → Projects)")
+    st.header("Budget Structure")
     
-    tab1, tab2 = st.tabs(["View Structure", "Create New"])
+    tab1, tab2, tab3 = st.tabs(["📊 Card View", "📋 List View", "➕ Create New"])
     
+    campaigns = api_get("/api/campaigns/")
+    
+    # ========================================
+    # TAB 1: CARD VIEW - Hierarchical Display
+    # ========================================
     with tab1:
-        campaigns = api_get("/api/campaigns/")
-        
         if campaigns:
-            # Group by level
-            level_1 = [c for c in campaigns if c['level'] == 1]
-            level_2 = [c for c in campaigns if c['level'] == 2]
-            level_3 = [c for c in campaigns if c['level'] == 3]
+            departments = [c for c in campaigns if c['level'] == 1]
             
-            if level_1:
-                st.subheader("Level 1: Department")
-                for campaign in level_1:
-                    col1, col2, col3 = st.columns([3, 1, 1])
+            if not departments:
+                st.info("No departments found. Create a Level 1 Department first.")
+            
+            for dept in departments:
+                # DEPARTMENT CARD
+                with st.container():
+                    st.markdown(f"### 🏢 {dept['name']}")
                     
-                    with col1:
-                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
-                        st.caption(f"Overall marketing organization | {campaign.get('is_active', 'active')}")
-                    
-                    with col2:
-                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
-                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
-                    
-                    with col3:
-                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
-                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                            if budget_items:
-                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
-                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
+                    # Department metrics row
+                    cols = st.columns([2, 1, 1, 1, 0.3, 0.3])
+                    with cols[0]:
+                        if dept.get('description'):
+                            st.caption(dept['description'])
+                        st.caption(f"📅 {dept.get('start_date', 'N/A')} to {dept.get('end_date', 'N/A')}")
+                    with cols[1]:
+                        st.metric("Budget", f"${dept['total_budget']:,.0f}")
+                    with cols[2]:
+                        allocated = sum(c['total_budget'] for c in campaigns if c.get('parent_id') == dept['id'])
+                        st.metric("Allocated", f"${allocated:,.0f}")
+                    with cols[3]:
+                        available = dept['total_budget'] - allocated
+                        pct = (allocated / dept['total_budget'] * 100) if dept['total_budget'] > 0 else 0
+                        st.metric("Available", f"${available:,.0f}", delta=f"{pct:.0f}% used")
+                    with cols[4]:
+                        if st.button("✏️", key=f"edit_d_{dept['id']}", help="Edit"):
+                            st.session_state[f'editing_campaign_{dept["id"]}'] = True
+                            st.rerun()
+                    with cols[5]:
+                        if st.button("🗑️", key=f"del_d_{dept['id']}", help="Delete"):
+                            children = [c for c in campaigns if c.get('parent_id') == dept['id']]
+                            if children:
+                                st.error(f"Cannot delete: Has {len(children)} child items")
+                            elif api_delete(f"/api/campaigns/{dept['id']}"):
                                 st.success("Deleted!")
                                 st.rerun()
-                            else:
-                                st.error("Delete failed")
                     
-                    with st.expander("View Details"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**ID:** {campaign['id']}")
-                            if campaign.get('description'):
-                                st.write(f"**Description:** {campaign['description']}")
-                        with col2:
-                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
-                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
-                        
-                        # Budget allocation
-                        allocation = api_get(f"/api/campaigns/{campaign['id']}/budget-allocation")
-                        if allocation:
-                            st.subheader("Budget Allocation")
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Budget", f"${allocation['total_budget']:,.0f}")
-                            with col2:
-                                st.metric("Allocated", f"${allocation['allocated_to_children']:,.0f}")
-                            with col3:
-                                available = allocation['available']
-                                st.metric("Available", f"${available:,.0f}", 
-                                         delta=f"{allocation['allocation_percentage']:.1f}% used",
-                                         delta_color="inverse" if allocation['over_allocated'] else "normal")
-                            
-                            if allocation['over_allocated']:
-                                st.error(f"Over-allocated by ${abs(available):,.0f}!")
-                        
-                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                        if budget_items:
-                            st.write("**Budget Items:**")
-                            for item in budget_items:
-                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
-                    
-                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
-                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
-                            st.subheader(f"Edit: {campaign['name']}")
-                            
+                    # Department edit form
+                    if st.session_state.get(f'editing_campaign_{dept["id"]}'):
+                        with st.form(key=f"edit_dept_{dept['id']}"):
+                            st.subheader("Edit Department")
                             col1, col2 = st.columns(2)
                             with col1:
-                                new_name = st.text_input("Name", value=campaign['name'])
-                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
-                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
+                                new_name = st.text_input("Name", value=dept['name'])
+                                new_desc = st.text_area("Description", value=dept.get('description', ''))
+                                new_budget = st.number_input("Budget", value=float(dept['total_budget']), format="%.2f")
                             with col2:
                                 new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
-                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
-                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
-                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                                                         index=["active", "inactive", "completed"].index(dept.get('is_active', 'active')))
+                                new_start = st.date_input("Start", value=datetime.fromisoformat(dept['start_date']).date() if dept.get('start_date') else date.today())
+                                new_end = st.date_input("End", value=datetime.fromisoformat(dept['end_date']).date() if dept.get('end_date') else date.today())
+                            
+                            st.info("Level 1 (Department) cannot have a parent")
                             
                             col_save, col_cancel = st.columns(2)
                             with col_save:
-                                if st.form_submit_button("Save Changes"):
+                                if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
                                     update_data = {
                                         "name": new_name,
                                         "description": new_desc,
@@ -325,205 +305,231 @@ elif page == "Budget Structure":
                                         "start_date": new_start.isoformat(),
                                         "end_date": new_end.isoformat()
                                     }
-                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
+                                    if api_put(f"/api/campaigns/{dept['id']}", update_data):
                                         st.success("Updated!")
-                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                        del st.session_state[f'editing_campaign_{dept["id"]}']
                                         st.rerun()
                                     else:
                                         st.error("Update failed")
-                            
                             with col_cancel:
-                                if st.form_submit_button("Cancel"):
-                                    del st.session_state[f'editing_campaign_{campaign["id"]}']
+                                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                    del st.session_state[f'editing_campaign_{dept["id"]}']
                                     st.rerun()
+                    
+                    # PROGRAMS under this department
+                    programs = [c for c in campaigns if c.get('parent_id') == dept['id']]
+                    
+                    if programs:
+                        st.markdown("#### 📂 Programs")
                         
-                        st.markdown("---")
-            
-            if level_2:
-                st.subheader("Level 2: Programs")
-                for campaign in level_2:
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    
-                    with col1:
-                        parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
-                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
-                        st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
-                    
-                    with col2:
-                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
-                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
-                    
-                    with col3:
-                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
-                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                            if budget_items:
-                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
-                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
-                                st.success("Deleted!")
-                                st.rerun()
-                            else:
-                                st.error("Delete failed")
-                    
-                    with st.expander("View Details"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**ID:** {campaign['id']}")
-                            if campaign.get('description'):
-                                st.write(f"**Description:** {campaign['description']}")
-                        with col2:
-                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
-                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
-                        
-                        # Budget allocation
-                        allocation = api_get(f"/api/campaigns/{campaign['id']}/budget-allocation")
-                        if allocation:
-                            st.subheader("Budget Allocation")
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Budget", f"${allocation['total_budget']:,.0f}")
-                            with col2:
-                                st.metric("Allocated", f"${allocation['allocated_to_children']:,.0f}")
-                            with col3:
-                                available = allocation['available']
-                                st.metric("Available", f"${available:,.0f}", 
-                                         delta=f"{allocation['allocation_percentage']:.1f}% used",
-                                         delta_color="inverse" if allocation['over_allocated'] else "normal")
-                            
-                            if allocation['over_allocated']:
-                                st.error(f"Over-allocated by ${abs(available):,.0f}!")
-                        
-                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                        if budget_items:
-                            st.write("**Budget Items:**")
-                            for item in budget_items:
-                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
-                    
-                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
-                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
-                            st.subheader(f"Edit: {campaign['name']}")
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                new_name = st.text_input("Name", value=campaign['name'])
-                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
-                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
-                            with col2:
-                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
-                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
-                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
-                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
-                            
-                            col_save, col_cancel = st.columns(2)
-                            with col_save:
-                                if st.form_submit_button("Save Changes"):
-                                    update_data = {
-                                        "name": new_name,
-                                        "description": new_desc,
-                                        "total_budget": float(new_budget),
-                                        "is_active": new_status,
-                                        "start_date": new_start.isoformat(),
-                                        "end_date": new_end.isoformat()
-                                    }
-                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
-                                        st.success("Updated!")
-                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
+                        for prog in programs:
+                            cols = st.columns([2, 1, 1, 1, 0.3, 0.3])
+                            with cols[0]:
+                                status_dot = "🟢" if prog.get('is_active') == 'active' else "🔴"
+                                st.write(f"**{status_dot} {prog['name']}**")
+                                if prog.get('description'):
+                                    st.caption(prog['description'])
+                            with cols[1]:
+                                st.write(f"${prog['total_budget']:,.0f}")
+                            with cols[2]:
+                                allocated = sum(c['total_budget'] for c in campaigns if c.get('parent_id') == prog['id'])
+                                st.write(f"${allocated:,.0f}")
+                            with cols[3]:
+                                available = prog['total_budget'] - allocated
+                                st.write(f"${available:,.0f}")
+                            with cols[4]:
+                                if st.button("✏️", key=f"edit_p_{prog['id']}", help="Edit"):
+                                    st.session_state[f'editing_campaign_{prog["id"]}'] = True
+                                    st.rerun()
+                            with cols[5]:
+                                if st.button("🗑️", key=f"del_p_{prog['id']}", help="Delete"):
+                                    children = [c for c in campaigns if c.get('parent_id') == prog['id']]
+                                    if children:
+                                        st.error(f"Cannot delete: Has {len(children)} campaigns")
+                                    elif api_delete(f"/api/campaigns/{prog['id']}"):
+                                        st.success("Deleted!")
                                         st.rerun()
-                                    else:
-                                        st.error("Update failed")
                             
-                            with col_cancel:
-                                if st.form_submit_button("Cancel"):
-                                    del st.session_state[f'editing_campaign_{campaign["id"]}']
-                                    st.rerun()
-                        
-                        st.markdown("---")
-            
-            if level_3:
-                st.subheader("Level 3: Projects/Campaigns")
-                for campaign in level_3:
-                    col1, col2, col3 = st.columns([3, 1, 1])
-                    
-                    with col1:
-                        parent_name = next((c['name'] for c in campaigns if c['id'] == campaign.get('parent_id')), 'No Parent')
-                        st.write(f"**{campaign['name']}** - ${campaign['total_budget']:,.0f}")
-                        st.caption(f"Under: {parent_name} | {campaign.get('is_active', 'active')}")
-                    
-                    with col2:
-                        if st.button("Edit", key=f"edit_camp_{campaign['id']}"):
-                            st.session_state[f'editing_campaign_{campaign["id"]}'] = True
-                    
-                    with col3:
-                        if st.button("Delete", key=f"del_camp_{campaign['id']}"):
-                            budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                            if budget_items:
-                                st.error(f"Cannot delete: Has {len(budget_items)} budget items")
-                            elif api_delete(f"/api/campaigns/{campaign['id']}"):
-                                st.success("Deleted!")
-                                st.rerun()
-                            else:
-                                st.error("Delete failed")
-                    
-                    with st.expander("View Details"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**ID:** {campaign['id']}")
-                            if campaign.get('description'):
-                                st.write(f"**Description:** {campaign['description']}")
-                        with col2:
-                            st.write(f"**Budget:** ${campaign['total_budget']:,.0f}")
-                            st.write(f"**Dates:** {campaign.get('start_date', 'N/A')} to {campaign.get('end_date', 'N/A')}")
-                        
-                        budget_items = api_get(f"/api/budgets/campaign/{campaign['id']}")
-                        if budget_items:
-                            st.write("**Budget Items:**")
-                            for item in budget_items:
-                                st.write(f"- {item['name']}: ${item['total_budget']:,.0f}")
-                    
-                    if st.session_state.get(f'editing_campaign_{campaign["id"]}'):
-                        with st.form(key=f"edit_form_campaign_{campaign['id']}"):
-                            st.subheader(f"Edit: {campaign['name']}")
+                            # Program edit form
+                            if st.session_state.get(f'editing_campaign_{prog["id"]}'):
+                                with st.form(key=f"edit_prog_{prog['id']}"):
+                                    st.subheader("Edit Program")
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        new_name = st.text_input("Name", value=prog['name'])
+                                        new_desc = st.text_area("Description", value=prog.get('description', ''))
+                                        new_budget = st.number_input("Budget", value=float(prog['total_budget']), format="%.2f")
+                                        
+                                        # PARENT SELECTION FOR PROGRAMS
+                                        dept_options = {d['name']: d['id'] for d in departments}
+                                        current_parent_name = next(
+                                            (name for name, id in dept_options.items() if id == prog.get('parent_id')),
+                                            list(dept_options.keys())[0] if dept_options else None
+                                        )
+                                        if dept_options:
+                                            selected_parent = st.selectbox(
+                                                "Parent Department",
+                                                list(dept_options.keys()),
+                                                index=list(dept_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                            )
+                                            new_parent_id = dept_options[selected_parent]
+                                        else:
+                                            st.warning("No departments available")
+                                            new_parent_id = prog.get('parent_id')
+                                    
+                                    with col2:
+                                        new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                                 index=["active", "inactive", "completed"].index(prog.get('is_active', 'active')))
+                                        new_start = st.date_input("Start", value=datetime.fromisoformat(prog['start_date']).date() if prog.get('start_date') else date.today())
+                                        new_end = st.date_input("End", value=datetime.fromisoformat(prog['end_date']).date() if prog.get('end_date') else date.today())
+                                    
+                                    col_save, col_cancel = st.columns(2)
+                                    with col_save:
+                                        if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
+                                            update_data = {
+                                                "name": new_name,
+                                                "description": new_desc,
+                                                "total_budget": float(new_budget),
+                                                "is_active": new_status,
+                                                "start_date": new_start.isoformat(),
+                                                "end_date": new_end.isoformat(),
+                                                "parent_id": new_parent_id
+                                            }
+                                            if api_put(f"/api/campaigns/{prog['id']}", update_data):
+                                                st.success("Updated!")
+                                                del st.session_state[f'editing_campaign_{prog["id"]}']
+                                                st.rerun()
+                                            else:
+                                                st.error("Update failed")
+                                    with col_cancel:
+                                        if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                            del st.session_state[f'editing_campaign_{prog["id"]}']
+                                            st.rerun()
                             
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                new_name = st.text_input("Name", value=campaign['name'])
-                                new_desc = st.text_area("Description", value=campaign.get('description', ''))
-                                new_budget = st.number_input("Total Budget", value=float(campaign['total_budget']), format="%.2f")
-                            with col2:
-                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
-                                                         index=["active", "inactive", "completed"].index(campaign.get('is_active', 'active')))
-                                new_start = st.date_input("Start Date", value=datetime.fromisoformat(campaign['start_date']).date() if campaign.get('start_date') else date.today())
-                                new_end = st.date_input("End Date", value=datetime.fromisoformat(campaign['end_date']).date() if campaign.get('end_date') else date.today())
+                            # CAMPAIGNS under this program
+                            campaigns_list = [c for c in campaigns if c.get('parent_id') == prog['id']]
                             
-                            col_save, col_cancel = st.columns(2)
-                            with col_save:
-                                if st.form_submit_button("Save Changes"):
-                                    update_data = {
-                                        "name": new_name,
-                                        "description": new_desc,
-                                        "total_budget": float(new_budget),
-                                        "is_active": new_status,
-                                        "start_date": new_start.isoformat(),
-                                        "end_date": new_end.isoformat()
-                                    }
-                                    if api_put(f"/api/campaigns/{campaign['id']}", update_data):
-                                        st.success("Updated!")
-                                        del st.session_state[f'editing_campaign_{campaign["id"]}']
-                                        st.rerun()
-                                    else:
-                                        st.error("Update failed")
+                            if campaigns_list:
+                                with st.expander(f"📊 {len(campaigns_list)} Campaigns", expanded=False):
+                                    for camp in campaigns_list:
+                                        cols = st.columns([3, 1, 0.3, 0.3])
+                                        with cols[0]:
+                                            status_dot = "🟢" if camp.get('is_active') == 'active' else "🔴"
+                                            st.write(f"{status_dot} {camp['name']}")
+                                            if camp.get('description'):
+                                                st.caption(camp['description'])
+                                        with cols[1]:
+                                            st.write(f"${camp['total_budget']:,.0f}")
+                                        with cols[2]:
+                                            if st.button("✏️", key=f"edit_c_{camp['id']}", help="Edit"):
+                                                st.session_state[f'editing_campaign_{camp["id"]}'] = True
+                                                st.rerun()
+                                        with cols[3]:
+                                            if st.button("🗑️", key=f"del_c_{camp['id']}", help="Delete"):
+                                                if api_delete(f"/api/campaigns/{camp['id']}"):
+                                                    st.success("Deleted!")
+                                                    st.rerun()
+                                        
+                                        # Campaign edit form
+                                        if st.session_state.get(f'editing_campaign_{camp["id"]}'):
+                                            with st.form(key=f"edit_camp_{camp['id']}"):
+                                                st.subheader("Edit Campaign")
+                                                col1, col2 = st.columns(2)
+                                                with col1:
+                                                    new_name = st.text_input("Name", value=camp['name'])
+                                                    new_desc = st.text_area("Description", value=camp.get('description', ''))
+                                                    new_budget = st.number_input("Budget", value=float(camp['total_budget']), format="%.2f")
+                                                    
+                                                    # PARENT SELECTION FOR CAMPAIGNS
+                                                    prog_options = {
+                                                        p['name']: p['id'] 
+                                                        for p in campaigns 
+                                                        if p['level'] == 2
+                                                    }
+                                                    current_parent_name = next(
+                                                        (name for name, id in prog_options.items() if id == camp.get('parent_id')),
+                                                        list(prog_options.keys())[0] if prog_options else None
+                                                    )
+                                                    if prog_options:
+                                                        selected_parent = st.selectbox(
+                                                            "Parent Program",
+                                                            list(prog_options.keys()),
+                                                            index=list(prog_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                                        )
+                                                        new_parent_id = prog_options[selected_parent]
+                                                    else:
+                                                        st.warning("No programs available")
+                                                        new_parent_id = camp.get('parent_id')
+                                                
+                                                with col2:
+                                                    new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                                             index=["active", "inactive", "completed"].index(camp.get('is_active', 'active')))
+                                                    new_start = st.date_input("Start", value=datetime.fromisoformat(camp['start_date']).date() if camp.get('start_date') else date.today())
+                                                    new_end = st.date_input("End", value=datetime.fromisoformat(camp['end_date']).date() if camp.get('end_date') else date.today())
+                                                
+                                                col_save, col_cancel = st.columns(2)
+                                                with col_save:
+                                                    if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
+                                                        update_data = {
+                                                            "name": new_name,
+                                                            "description": new_desc,
+                                                            "total_budget": float(new_budget),
+                                                            "is_active": new_status,
+                                                            "start_date": new_start.isoformat(),
+                                                            "end_date": new_end.isoformat(),
+                                                            "parent_id": new_parent_id
+                                                        }
+                                                        if api_put(f"/api/campaigns/{camp['id']}", update_data):
+                                                            st.success("Updated!")
+                                                            del st.session_state[f'editing_campaign_{camp["id"]}']
+                                                            st.rerun()
+                                                        else:
+                                                            st.error("Update failed")
+                                                with col_cancel:
+                                                    if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                                        del st.session_state[f'editing_campaign_{camp["id"]}']
+                                                        st.rerun()
+                                        
+                                        st.divider()
                             
-                            with col_cancel:
-                                if st.form_submit_button("Cancel"):
-                                    del st.session_state[f'editing_campaign_{campaign["id"]}']
-                                    st.rerun()
-                        
-                        st.markdown("---")
+                            st.divider()
+                    
+                    st.markdown("---")
         else:
-            st.info("No structure created yet. Start by creating your Department (Level 1).")
+            st.info("No structure created yet. Use the 'Create New' tab to start.")
     
+    # ========================================
+    # TAB 2: LIST VIEW - Flat List
+    # ========================================
     with tab2:
-        campaigns = api_get("/api/campaigns/")
-        
+        if campaigns:
+            # Create flat table
+            table_data = []
+            for c in campaigns:
+                level_icon = {1: "🏢", 2: "📂", 3: "📊"}[c['level']]
+                level_name = {1: "Department", 2: "Program", 3: "Campaign"}[c['level']]
+                parent_name = next((p['name'] for p in campaigns if p['id'] == c.get('parent_id')), "None")
+                status_icon = "🟢" if c.get('is_active') == 'active' else "🔴"
+                
+                table_data.append({
+                    "": level_icon,
+                    "Name": c['name'],
+                    "Level": level_name,
+                    "Budget": f"${c['total_budget']:,.0f}",
+                    "Parent": parent_name,
+                    "Status": status_icon,
+                    "Dates": f"{c.get('start_date', 'N/A')} to {c.get('end_date', 'N/A')}"
+                })
+            
+            df = pd.DataFrame(table_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No items found")
+    
+    # ========================================
+    # TAB 3: CREATE NEW
+    # ========================================
+    with tab3:
         with st.form("create_campaign"):
             st.subheader("Create New Budget Structure Item")
             
@@ -531,20 +537,29 @@ elif page == "Budget Structure":
             
             with col1:
                 name = st.text_input("Name*", placeholder="e.g., '2026 Marketing Department'")
-                description = st.text_area("Description", 
-                    placeholder="Describe the purpose and scope")
-                parent_options = ["None (Top Level Department)"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns]
-                parent_selection = st.selectbox("Parent", parent_options)
-            
-            with col2:
+                description = st.text_area("Description", placeholder="Describe the purpose and scope")
+                
                 level = st.selectbox("Level", [1, 2, 3],
                     format_func=lambda x: {1: "1 - Department", 2: "2 - Program", 3: "3 - Project/Campaign"}[x])
+                
+                # Parent selection based on level
+                if level == 1:
+                    st.info("Level 1 items cannot have a parent")
+                    parent_selection = None
+                elif level == 2:
+                    dept_options = ["None"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns if c['level'] == 1]
+                    parent_selection = st.selectbox("Parent Department", dept_options)
+                else:  # level 3
+                    prog_options = ["None"] + [f"{c['name']} (ID: {c['id']})" for c in campaigns if c['level'] == 2]
+                    parent_selection = st.selectbox("Parent Program", prog_options)
+            
+            with col2:
                 total_budget = st.number_input("Total Budget ($)*", min_value=0.0, value=0.0, format="%.2f")
                 start_date = st.date_input("Start Date")
                 end_date = st.date_input("End Date")
             
             # Show parent budget availability
-            if parent_selection != "None (Top Level Department)":
+            if parent_selection and parent_selection != "None":
                 parent_id = int(parent_selection.split("ID: ")[1].split(")")[0])
                 parent_allocation = api_get(f"/api/campaigns/{parent_id}/budget-allocation")
                 
@@ -562,14 +577,14 @@ elif page == "Budget Structure":
             else:
                 st.info("**Level 3 - Project/Campaign:** Specific initiatives like 'Q1 Google Ads Campaign'.")
             
-            if st.form_submit_button("Create"):
+            if st.form_submit_button("Create", type="primary"):
                 if not name:
                     st.error("Name is required")
                 elif total_budget < 0:
                     st.error("Budget cannot be negative")
                 else:
                     parent_id = None
-                    if parent_selection != "None (Top Level Department)":
+                    if parent_selection and parent_selection != "None":
                         parent_id = int(parent_selection.split("ID: ")[1].split(")")[0])
                         parent_allocation = api_get(f"/api/campaigns/{parent_id}/budget-allocation")
                         
