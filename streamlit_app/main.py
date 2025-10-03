@@ -240,6 +240,115 @@ elif page == "Budget Structure":
     with tab1:
         if campaigns:
             departments = [c for c in campaigns if c['level'] == 1]
+            programs_all = [c for c in campaigns if c['level'] == 2]
+            programs_orphaned = [p for p in programs_all if not p.get('parent_id')]
+            
+            # Show orphaned programs first
+            if programs_orphaned:
+                st.warning(f"⚠️ {len(programs_orphaned)} programs without parent department")
+                
+                for prog in programs_orphaned:
+                    cols = st.columns([2, 1, 1, 1, 0.3, 0.3])
+                    with cols[0]:
+                        status_dot = "🟢" if prog.get('is_active') == 'active' else "🔴"
+                        st.write(f"📂 **{status_dot} {prog['name']}** (No Parent)")
+                        if prog.get('description'):
+                            st.caption(prog['description'])
+                    with cols[1]:
+                        st.write(f"${prog['total_budget']:,.0f}")
+                    with cols[2]:
+                        allocated = sum(c['total_budget'] for c in campaigns if c.get('parent_id') == prog['id'])
+                        st.write(f"${allocated:,.0f}")
+                    with cols[3]:
+                        available = prog['total_budget'] - allocated
+                        st.write(f"${available:,.0f}")
+                    with cols[4]:
+                        if st.button("✏️", key=f"edit_orphan_p_{prog['id']}", help="Edit"):
+                            st.session_state[f'editing_campaign_{prog["id"]}'] = True
+                            st.rerun()
+                    with cols[5]:
+                        if st.button("🗑️", key=f"del_orphan_p_{prog['id']}", help="Delete"):
+                            children = [c for c in campaigns if c.get('parent_id') == prog['id']]
+                            if children:
+                                st.error(f"Cannot delete: Has {len(children)} campaigns")
+                            elif api_delete(f"/api/campaigns/{prog['id']}"):
+                                st.success("Deleted!")
+                                st.rerun()
+                    
+                    # Edit form for orphaned program
+                    if st.session_state.get(f'editing_campaign_{prog["id"]}'):
+                        with st.form(key=f"edit_orphan_prog_{prog['id']}"):
+                            st.subheader("Edit Program")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                new_name = st.text_input("Name", value=prog['name'])
+                                new_desc = st.text_area("Description", value=prog.get('description', ''))
+                                new_budget = st.number_input("Budget", value=float(prog['total_budget']), format="%.2f")
+                                
+                                # PARENT SELECTION
+                                dept_options = {"No Parent": None}
+                                dept_options.update({d['name']: d['id'] for d in departments})
+                                
+                                current_parent_name = "No Parent"
+                                if prog.get('parent_id'):
+                                    current_parent_name = next(
+                                        (name for name, id in dept_options.items() if id == prog.get('parent_id')),
+                                        "No Parent"
+                                    )
+                                
+                                try:
+                                    idx = list(dept_options.keys()).index(current_parent_name)
+                                except (ValueError, IndexError):
+                                    idx = 0
+                                
+                                selected_parent = st.selectbox(
+                                    "Parent Department",
+                                    list(dept_options.keys()),
+                                    index=idx
+                                )
+                                new_parent_id = dept_options[selected_parent]
+                            
+                            with col2:
+                                new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                         index=["active", "inactive", "completed"].index(prog.get('is_active', 'active')))
+                                try:
+                                    start_value = datetime.fromisoformat(prog['start_date']).date() if prog.get('start_date') else date.today()
+                                except (ValueError, AttributeError):
+                                    start_value = date.today()
+                                try:
+                                    end_value = datetime.fromisoformat(prog['end_date']).date() if prog.get('end_date') else date.today()
+                                except (ValueError, AttributeError):
+                                    end_value = date.today()
+                                
+                                new_start = st.date_input("Start", value=start_value)
+                                new_end = st.date_input("End", value=end_value)
+                            
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
+                                    update_data = {
+                                        "name": new_name,
+                                        "description": new_desc,
+                                        "total_budget": float(new_budget),
+                                        "is_active": new_status,
+                                        "start_date": new_start.isoformat(),
+                                        "end_date": new_end.isoformat(),
+                                        "parent_id": new_parent_id
+                                    }
+                                    if api_put(f"/api/campaigns/{prog['id']}", update_data):
+                                        st.success("Updated!")
+                                        del st.session_state[f'editing_campaign_{prog["id"]}']
+                                        st.rerun()
+                                    else:
+                                        st.error("Update failed")
+                            with col_cancel:
+                                if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                    del st.session_state[f'editing_campaign_{prog["id"]}']
+                                    st.rerun()
+                    
+                    st.divider()
+                
+                st.markdown("---")
             
             if not departments:
                 st.info("No departments found. Create a Level 1 Department first.")
@@ -289,8 +398,17 @@ elif page == "Budget Structure":
                             with col2:
                                 new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
                                                          index=["active", "inactive", "completed"].index(dept.get('is_active', 'active')))
-                                new_start = st.date_input("Start", value=datetime.fromisoformat(dept['start_date']).date() if dept.get('start_date') else date.today())
-                                new_end = st.date_input("End", value=datetime.fromisoformat(dept['end_date']).date() if dept.get('end_date') else date.today())
+                                try:
+                                    start_value = datetime.fromisoformat(dept['start_date']).date() if dept.get('start_date') else date.today()
+                                except (ValueError, AttributeError):
+                                    start_value = date.today()
+                                try:
+                                    end_value = datetime.fromisoformat(dept['end_date']).date() if dept.get('end_date') else date.today()
+                                except (ValueError, AttributeError):
+                                    end_value = date.today()
+                                
+                                new_start = st.date_input("Start", value=start_value)
+                                new_end = st.date_input("End", value=end_value)
                             
                             st.info("Level 1 (Department) cannot have a parent")
                             
@@ -367,10 +485,16 @@ elif page == "Budget Structure":
                                             list(dept_options.keys())[0] if dept_options else None
                                         )
                                         if dept_options:
+                                            # Safe index lookup
+                                            try:
+                                                idx = list(dept_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                            except (ValueError, IndexError):
+                                                idx = 0
+                                            
                                             selected_parent = st.selectbox(
                                                 "Parent Department",
                                                 list(dept_options.keys()),
-                                                index=list(dept_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                                index=idx
                                             )
                                             new_parent_id = dept_options[selected_parent]
                                         else:
@@ -380,8 +504,17 @@ elif page == "Budget Structure":
                                     with col2:
                                         new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
                                                                  index=["active", "inactive", "completed"].index(prog.get('is_active', 'active')))
-                                        new_start = st.date_input("Start", value=datetime.fromisoformat(prog['start_date']).date() if prog.get('start_date') else date.today())
-                                        new_end = st.date_input("End", value=datetime.fromisoformat(prog['end_date']).date() if prog.get('end_date') else date.today())
+                                        try:
+                                            start_value = datetime.fromisoformat(prog['start_date']).date() if prog.get('start_date') else date.today()
+                                        except (ValueError, AttributeError):
+                                            start_value = date.today()
+                                        try:
+                                            end_value = datetime.fromisoformat(prog['end_date']).date() if prog.get('end_date') else date.today()
+                                        except (ValueError, AttributeError):
+                                            end_value = date.today()
+                                        
+                                        new_start = st.date_input("Start", value=start_value)
+                                        new_end = st.date_input("End", value=end_value)
                                     
                                     col_save, col_cancel = st.columns(2)
                                     with col_save:
@@ -451,10 +584,16 @@ elif page == "Budget Structure":
                                                         list(prog_options.keys())[0] if prog_options else None
                                                     )
                                                     if prog_options:
+                                                        # Safe index lookup
+                                                        try:
+                                                            idx = list(prog_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                                        except (ValueError, IndexError):
+                                                            idx = 0
+                                                        
                                                         selected_parent = st.selectbox(
                                                             "Parent Program",
                                                             list(prog_options.keys()),
-                                                            index=list(prog_options.keys()).index(current_parent_name) if current_parent_name else 0
+                                                            index=idx
                                                         )
                                                         new_parent_id = prog_options[selected_parent]
                                                     else:
@@ -464,8 +603,17 @@ elif page == "Budget Structure":
                                                 with col2:
                                                     new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
                                                                              index=["active", "inactive", "completed"].index(camp.get('is_active', 'active')))
-                                                    new_start = st.date_input("Start", value=datetime.fromisoformat(camp['start_date']).date() if camp.get('start_date') else date.today())
-                                                    new_end = st.date_input("End", value=datetime.fromisoformat(camp['end_date']).date() if camp.get('end_date') else date.today())
+                                                    try:
+                                                        start_value = datetime.fromisoformat(camp['start_date']).date() if camp.get('start_date') else date.today()
+                                                    except (ValueError, AttributeError):
+                                                        start_value = date.today()
+                                                    try:
+                                                        end_value = datetime.fromisoformat(camp['end_date']).date() if camp.get('end_date') else date.today()
+                                                    except (ValueError, AttributeError):
+                                                        end_value = date.today()
+                                                    
+                                                    new_start = st.date_input("Start", value=start_value)
+                                                    new_end = st.date_input("End", value=end_value)
                                                 
                                                 col_save, col_cancel = st.columns(2)
                                                 with col_save:
@@ -503,26 +651,159 @@ elif page == "Budget Structure":
     # ========================================
     with tab2:
         if campaigns:
-            # Create flat table
-            table_data = []
+            st.subheader("All Budget Items")
+            
             for c in campaigns:
                 level_icon = {1: "🏢", 2: "📂", 3: "📊"}[c['level']]
                 level_name = {1: "Department", 2: "Program", 3: "Campaign"}[c['level']]
                 parent_name = next((p['name'] for p in campaigns if p['id'] == c.get('parent_id')), "None")
                 status_icon = "🟢" if c.get('is_active') == 'active' else "🔴"
                 
-                table_data.append({
-                    "": level_icon,
-                    "Name": c['name'],
-                    "Level": level_name,
-                    "Budget": f"${c['total_budget']:,.0f}",
-                    "Parent": parent_name,
-                    "Status": status_icon,
-                    "Dates": f"{c.get('start_date', 'N/A')} to {c.get('end_date', 'N/A')}"
-                })
-            
-            df = pd.DataFrame(table_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+                # Display row
+                cols = st.columns([0.3, 2, 1, 1, 1.5, 0.5, 1.5, 0.3, 0.3])
+                with cols[0]:
+                    st.write(level_icon)
+                with cols[1]:
+                    st.write(f"**{c['name']}**")
+                with cols[2]:
+                    st.write(level_name)
+                with cols[3]:
+                    st.write(f"${c['total_budget']:,.0f}")
+                with cols[4]:
+                    st.write(parent_name)
+                with cols[5]:
+                    st.write(status_icon)
+                with cols[6]:
+                    st.caption(f"{c.get('start_date', 'N/A')} to {c.get('end_date', 'N/A')}")
+                with cols[7]:
+                    if st.button("✏️", key=f"edit_list_{c['id']}", help="Edit"):
+                        st.session_state[f'editing_list_{c["id"]}'] = True
+                        st.rerun()
+                with cols[8]:
+                    if st.button("🗑️", key=f"del_list_{c['id']}", help="Delete"):
+                        children = [x for x in campaigns if x.get('parent_id') == c['id']]
+                        if children:
+                            st.error(f"Cannot delete: Has {len(children)} child items")
+                        elif api_delete(f"/api/campaigns/{c['id']}"):
+                            st.success("Deleted!")
+                            st.rerun()
+                
+                # Edit form
+                if st.session_state.get(f'editing_list_{c["id"]}'):
+                    with st.form(key=f"edit_list_form_{c['id']}"):
+                        st.subheader(f"Edit: {c['name']}")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_name = st.text_input("Name", value=c['name'])
+                            new_desc = st.text_area("Description", value=c.get('description', ''))
+                            new_budget = st.number_input("Budget", value=float(c['total_budget']), format="%.2f")
+                            
+                            # PARENT SELECTION BASED ON LEVEL
+                            if c['level'] == 1:
+                                st.info("Level 1 (Department) cannot have a parent")
+                                new_parent_id = None
+                            elif c['level'] == 2:
+                                # Programs - select from departments
+                                dept_options = {"No Parent": None}
+                                dept_options.update({
+                                    d['name']: d['id'] 
+                                    for d in campaigns 
+                                    if d['level'] == 1
+                                })
+                                
+                                current_parent_name = "No Parent"
+                                if c.get('parent_id'):
+                                    current_parent_name = next(
+                                        (name for name, id in dept_options.items() if id == c.get('parent_id')),
+                                        "No Parent"
+                                    )
+                                
+                                # Safe index lookup
+                                try:
+                                    idx = list(dept_options.keys()).index(current_parent_name)
+                                except (ValueError, IndexError):
+                                    idx = 0
+                                
+                                selected_parent = st.selectbox(
+                                    "Parent Department",
+                                    list(dept_options.keys()),
+                                    index=idx
+                                )
+                                new_parent_id = dept_options[selected_parent]
+                            
+                            else:  # level 3
+                                # Campaigns - select from programs
+                                prog_options = {"No Parent": None}
+                                prog_options.update({
+                                    p['name']: p['id'] 
+                                    for p in campaigns 
+                                    if p['level'] == 2
+                                })
+                                
+                                current_parent_name = "No Parent"
+                                if c.get('parent_id'):
+                                    current_parent_name = next(
+                                        (name for name, id in prog_options.items() if id == c.get('parent_id')),
+                                        "No Parent"
+                                    )
+                                
+                                # Safe index lookup
+                                try:
+                                    idx = list(prog_options.keys()).index(current_parent_name)
+                                except (ValueError, IndexError):
+                                    idx = 0
+                                
+                                selected_parent = st.selectbox(
+                                    "Parent Program",
+                                    list(prog_options.keys()),
+                                    index=idx
+                                )
+                                new_parent_id = prog_options[selected_parent]
+                        
+                        with col2:
+                            new_status = st.selectbox("Status", ["active", "inactive", "completed"], 
+                                                    index=["active", "inactive", "completed"].index(c.get('is_active', 'active')))
+                            try:
+                                start_value = datetime.fromisoformat(c['start_date']).date() if c.get('start_date') else date.today()
+                            except (ValueError, AttributeError):
+                                start_value = date.today()
+                            try:
+                                end_value = datetime.fromisoformat(c['end_date']).date() if c.get('end_date') else date.today()
+                            except (ValueError, AttributeError):
+                                end_value = date.today()
+                            
+                            new_start = st.date_input("Start", value=start_value)
+                            new_end = st.date_input("End", value=end_value)
+                        
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
+                                update_data = {
+                                    "name": new_name,
+                                    "description": new_desc,
+                                    "total_budget": float(new_budget),
+                                    "is_active": new_status,
+                                    "start_date": new_start.isoformat(),
+                                    "end_date": new_end.isoformat()
+                                }
+                                
+                                # Only add parent_id for levels 2 and 3
+                                if c['level'] > 1:
+                                    update_data["parent_id"] = new_parent_id
+                                
+                                if api_put(f"/api/campaigns/{c['id']}", update_data):
+                                    st.success("Updated!")
+                                    del st.session_state[f'editing_list_{c["id"]}']
+                                    st.rerun()
+                                else:
+                                    st.error("Update failed")
+                        with col_cancel:
+                            if st.form_submit_button("❌ Cancel", use_container_width=True):
+                                del st.session_state[f'editing_list_{c["id"]}']
+                                st.rerun()
+                
+                st.divider()
         else:
             st.info("No items found")
     
