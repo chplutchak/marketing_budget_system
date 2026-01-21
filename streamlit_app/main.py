@@ -15,7 +15,7 @@ st.title("💼 Marketing Budget Management System")
 # Sidebar navigation
 page = st.sidebar.selectbox(
     "Navigate to:",
-    ["Getting Started", "Dashboard", "Budget Structure", "Budget Items", "Expenses", 
+    ["Getting Started", "Dashboard", "Marketing Plan 2026", "KPI Dashboard", "Budget Structure", "Budget Items", "Expenses", 
      "Budget vs Actual", "ROI Tracking", "Cost Centers"]
 )
 
@@ -226,7 +226,17 @@ elif page == "Dashboard":
             fig = px.pie(values=list(cat_actual.values()), names=list(cat_actual.keys()))
             st.plotly_chart(fig, use_container_width=True)
 
-# Budget Structure Page - COMPLETE REPLACEMENT
+# Marketing Plan 2026 Page   
+elif page == "Marketing Plan 2026":
+    from pages import marketing_plan_2026
+    marketing_plan_2026.show()
+
+# KPI Dashboard Page
+elif page == "KPI Dashboard":
+    from pages import kpi_dashboard
+    kpi_dashboard.show()
+
+# Budget Structure Page
 elif page == "Budget Structure":
     st.header("Budget Structure")
     
