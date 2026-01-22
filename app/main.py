@@ -19,7 +19,21 @@ from app.models.budget import BudgetItem
 from app.models.expense import ActualExpense
 from app.models.roi import ROIMetric
 from app.models.cost_center import CostCenter
-from app.models.kpi import KPIMetric, KPISnapshot  # <-- ADD THIS
+from app.models.kpi import KPIMetric, KPISnapshot
+
+# R&D Initiative models
+from app.models.rd_initiative import (
+    RDInitiative, 
+    RDFeasibility, 
+    RDCustomerInterest, 
+    RDSample, 
+    RDContact, 
+    RDMilestone, 
+    RDROI,
+    RDExpense,
+    RDRevenue,
+    RDNote
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,14 +51,19 @@ try:
     from app.api.endpoints.cost_centers import router as cost_centers_router
     from app.api.endpoints.expenses import router as expenses_router
     from app.api.endpoints.roi import router as roi_router
-    from app.api.endpoints.kpi import router as kpi_router  # <-- ADD THIS
+    from app.api.endpoints.kpi import router as kpi_router
+    # R&D endpoints - ONE router for all R&D functionality
+    from app.api.endpoints.rd_initiatives import router as rd_initiatives_router
     
     app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
     app.include_router(budgets_router, prefix="/api/budgets", tags=["budget-items"])
     app.include_router(cost_centers_router, prefix="/api/cost-centers", tags=["cost-centers"])
     app.include_router(expenses_router, prefix="/api/expenses", tags=["expenses"])
     app.include_router(roi_router, prefix="/api/roi", tags=["roi-metrics"])
-    app.include_router(kpi_router, prefix="/api/kpi", tags=["kpi"])  # <-- ADD THIS
+    app.include_router(kpi_router, prefix="/api/kpi", tags=["kpi"])
+    
+    # R&D router - all endpoints under /api/rd/
+    app.include_router(rd_initiatives_router, prefix="/api/rd", tags=["R&D Initiatives"])
     
 except ImportError as e:
     print(f"Warning: Could not import some routers - {e}")

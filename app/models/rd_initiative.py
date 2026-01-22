@@ -43,6 +43,9 @@ class RDInitiative(Base):
     contacts = relationship("RDContact", back_populates="initiative", cascade="all, delete-orphan")
     milestones = relationship("RDMilestone", back_populates="initiative", cascade="all, delete-orphan")
     roi_data = relationship("RDROI", back_populates="initiative", uselist=False)
+    expenses = relationship("RDExpense", back_populates="initiative", cascade="all, delete-orphan")
+    revenue = relationship("RDRevenue", back_populates="initiative", cascade="all, delete-orphan")
+    notes = relationship("RDNote", back_populates="initiative", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<RDInitiative(name='{self.name}', stage='{self.stage}')>"
@@ -289,3 +292,93 @@ class RDROI(Base):
     
     def __repr__(self):
         return f"<RDROI(initiative_id={self.initiative_id}, roi={self.roi_percentage}%)>"
+
+class RDExpense(Base):
+    __tablename__ = "rd_expenses"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    initiative_id = Column(Integer, ForeignKey("rd_initiatives.id"), nullable=False)
+    
+    # Expense details
+    expense_category = Column(String(100), nullable=False)  # Samples, Travel, Materials, Staffing, Marketing, Other
+    expense_description = Column(String(500), nullable=True)
+    amount = Column(Float, nullable=False)
+    expense_date = Column(Date, nullable=False)
+    
+    # Department ownership
+    department = Column(String(100), nullable=True)  # Marketing, Sales, Ops, Manufacturing
+    cost_center = Column(String(100), nullable=True)  # Links to your budget cost centers
+    
+    # Reference
+    invoice_number = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    initiative = relationship("RDInitiative", back_populates="expenses")
+    
+    def __repr__(self):
+        return f"<RDExpense(category='{self.expense_category}', amount=${self.amount})>"
+
+
+class RDRevenue(Base):
+    __tablename__ = "rd_revenue"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    initiative_id = Column(Integer, ForeignKey("rd_initiatives.id"), nullable=False)
+    
+    # Customer reference (links to customer interest if applicable)
+    customer_name = Column(String(255), nullable=False)
+    customer_interest_id = Column(Integer, ForeignKey("rd_customer_interest.id"), nullable=True)
+    
+    # Order details
+    order_number = Column(String(100), nullable=True)
+    order_value = Column(Float, nullable=False)
+    order_date = Column(Date, nullable=False)
+    
+    # Product status
+    product_launched = Column(String(20), default="no")  # yes, no (is this from a launched product or still trial?)
+    
+    # Notes
+    notes = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    initiative = relationship("RDInitiative", back_populates="revenue")
+    customer_interest = relationship("RDCustomerInterest", backref="orders")
+    
+    def __repr__(self):
+        return f"<RDRevenue(customer='{self.customer_name}', value=${self.order_value})>"
+
+
+class RDNote(Base):
+    __tablename__ = "rd_notes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    initiative_id = Column(Integer, ForeignKey("rd_initiatives.id"), nullable=False)
+    
+    # Note metadata
+    department = Column(String(100), nullable=True)  # Marketing, Sales, Ops, Manufacturing
+    author = Column(String(255), nullable=False)
+    note_date = Column(Date, nullable=False, server_default=func.current_date())
+    
+    # Note content
+    note_category = Column(String(100), nullable=True)  # General, Technical, Customer Feedback, Action Item
+    note_text = Column(Text, nullable=False)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    initiative = relationship("RDInitiative", back_populates="notes")
+    
+    def __repr__(self):
+        return f"<RDNote(author='{self.author}', date={self.note_date})>"
+    
