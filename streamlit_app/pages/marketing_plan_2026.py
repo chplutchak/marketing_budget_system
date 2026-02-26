@@ -4,8 +4,8 @@ import calendar
 import requests
 import os
 
-# API base URL
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+# API base URL - use Render API URL in production, localhost in development
+API_URL = os.getenv("API_URL", "https://marketing-budget-api.onrender.com")
 
 # API Helper Functions
 def get_calendar_with_activities(year: int, month: int):
