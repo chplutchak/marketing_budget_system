@@ -802,7 +802,7 @@ else:
                         if initiative.get('part_number'):
                             st.write(f"Part #: {initiative['part_number']}")
                         st.write(f"Lead: {initiative.get('lead_owner', 'Unassigned')}")
-                        target_market = initiative.get('target_market', 'Not specified')
+                        target_market = initiative.get('target_market') or 'Not specified'
                         st.write(f"Target Market: {target_market[:50]}{'...' if len(target_market) > 50 else ''}")
                         if initiative.get('target_price'):
                             st.write(f"Target Price: ${initiative['target_price']:,.2f}")
