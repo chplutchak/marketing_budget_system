@@ -20,6 +20,8 @@ from app.models.expense import ActualExpense
 from app.models.roi import ROIMetric
 from app.models.cost_center import CostCenter
 from app.models.kpi import KPIMetric, KPISnapshot
+from app.models.marketing_calendar import MarketingCalendar, MarketingActivity
+from app.models.marketing_budget import MarketingBudget, BudgetCategory
 
 # R&D Initiative models
 from app.models.rd_initiative import (
@@ -52,8 +54,12 @@ try:
     from app.api.endpoints.expenses import router as expenses_router
     from app.api.endpoints.roi import router as roi_router
     from app.api.endpoints.kpi import router as kpi_router
-    # R&D endpoints - ONE router for all R&D functionality
+
     from app.api.endpoints.rd_initiatives import router as rd_initiatives_router
+    from app.api.endpoints.marketing_calendar import router as marketing_calendar_router
+    from app.api.endpoints.marketing_budget import router as marketing_budget_router
+    from app.models.strategic_foundation import StrategicTarget, TargetAudience, MarketingObjective
+    from app.models.channels import MarketingChannel
     
     app.include_router(campaigns_router, prefix="/api/campaigns", tags=["campaigns"])
     app.include_router(budgets_router, prefix="/api/budgets", tags=["budget-items"])
@@ -62,8 +68,11 @@ try:
     app.include_router(roi_router, prefix="/api/roi", tags=["roi-metrics"])
     app.include_router(kpi_router, prefix="/api/kpi", tags=["kpi"])
     
-    # R&D router - all endpoints under /api/rd/
     app.include_router(rd_initiatives_router, prefix="/api/rd", tags=["R&D Initiatives"])
+    app.include_router(marketing_calendar_router, prefix="/api/marketing-calendar", tags=["marketing-calendar"])
+    app.include_router(marketing_budget_router, prefix="/api/marketing-budget", tags=["marketing-budget"])
+    from app.api.endpoints.strategic_foundation import router as strategic_foundation_router
+    from app.api.endpoints.channels import router as channels_router
     
 except ImportError as e:
     print(f"Warning: Could not import some routers - {e}")

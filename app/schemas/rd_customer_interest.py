@@ -9,6 +9,12 @@ class RDCustomerInterestBase(BaseModel):
     contact_person: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
+    
+    # NEW: Strategic intel
+    current_product_used: Optional[str] = None
+    testing_method: Optional[str] = None
+    interest_timeline: Optional[str] = None  # immediate, 30_days, 90_days, future
+    
     interest_level: str = "interested"  # interested, highly_interested, committed, testing, ordered, not_interested
     has_order_history: Optional[str] = None  # yes, no
     historical_order_volume: Optional[float] = None
@@ -30,6 +36,9 @@ class RDCustomerInterestUpdate(BaseModel):
     contact_person: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
+    current_product_used: Optional[str] = None
+    testing_method: Optional[str] = None
+    interest_timeline: Optional[str] = None
     interest_level: Optional[str] = None
     has_order_history: Optional[str] = None
     historical_order_volume: Optional[float] = None

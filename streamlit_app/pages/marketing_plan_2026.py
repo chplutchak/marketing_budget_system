@@ -1,31 +1,177 @@
 import streamlit as st
 from datetime import date, datetime
 import calendar
-import json
+import requests
 import os
 
-# For storing calendar completion state
-STATE_FILE = "calendar_state.json"
+# API base URL
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
-def load_calendar_state():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+# API Helper Functions
+def get_calendar_with_activities(year: int, month: int):
+    """Fetch calendar and activities from API"""
+    try:
+        response = requests.get(f"{API_URL}/api/marketing-calendar/calendars/{year}/{month}")
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        st.error(f"Error fetching calendar: {str(e)}")
+        return None
 
-def save_calendar_state(state):
-    with open(STATE_FILE, 'w') as f:
-        json.dump(state, f)
+def get_all_calendars(year: int):
+    """Fetch all calendars for a year"""
+    try:
+        response = requests.get(f"{API_URL}/api/marketing-calendar/calendars/year/{year}")
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except Exception as e:
+        st.error(f"Error fetching calendars: {str(e)}")
+        return []
+
+def toggle_activity_completion(activity_id: int):
+    """Toggle activity completion status"""
+    try:
+        response = requests.patch(f"{API_URL}/api/marketing-calendar/activities/{activity_id}/toggle")
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error toggling activity: {str(e)}")
+        return False
+
+def create_activity(calendar_id: int, week_number: int, activity_name: str, day_of_week: str, order: int = 0):
+    """Create a new activity"""
+    try:
+        payload = {
+            "calendar_id": calendar_id,
+            "week_number": week_number,
+            "activity_name": activity_name,
+            "day_of_week": day_of_week,
+            "order_in_week": order,
+            "is_completed": False
+        }
+        response = requests.post(f"{API_URL}/api/marketing-calendar/activities/", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error creating activity: {str(e)}")
+        return False
+
+def update_activity(activity_id: int, activity_name: str = None, day_of_week: str = None):
+    """Update an existing activity"""
+    try:
+        payload = {}
+        if activity_name:
+            payload["activity_name"] = activity_name
+        if day_of_week:
+            payload["day_of_week"] = day_of_week
+        
+        response = requests.put(f"{API_URL}/api/marketing-calendar/activities/{activity_id}", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error updating activity: {str(e)}")
+        return False
+
+def delete_activity(activity_id: int):
+    """Delete an activity"""
+    try:
+        response = requests.delete(f"{API_URL}/api/marketing-calendar/activities/{activity_id}")
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error deleting activity: {str(e)}")
+        return False
+
+def update_calendar_focus(calendar_id: int, focus: str, major_campaigns: list):
+    """Update calendar focus and campaigns"""
+    try:
+        payload = {
+            "focus": focus,
+            "major_campaigns": major_campaigns
+        }
+        response = requests.put(f"{API_URL}/api/marketing-calendar/calendars/{calendar_id}", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error updating calendar: {str(e)}")
+        return False
+
+def get_budget_by_year(year: int):
+    """Fetch budget for a specific year"""
+    try:
+        response = requests.get(f"{API_URL}/api/marketing-budget/budgets/year/{year}")
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except Exception as e:
+        st.error(f"Error fetching budget: {str(e)}")
+        return None
+
+def get_categories_by_year(year: int):
+    """Fetch all budget categories for a year"""
+    try:
+        response = requests.get(f"{API_URL}/api/marketing-budget/categories/year/{year}")
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except Exception as e:
+        st.error(f"Error fetching categories: {str(e)}")
+        return []
+
+def update_budget_totals(budget_id: int, total_budget: float, fixed_costs: float, flexible_budget: float):
+    """Update budget totals"""
+    try:
+        payload = {
+            "total_budget": total_budget,
+            "fixed_costs": fixed_costs,
+            "flexible_budget": flexible_budget
+        }
+        response = requests.put(f"{API_URL}/api/marketing-budget/budgets/{budget_id}", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error updating budget: {str(e)}")
+        return False
+
+def update_category(category_id: int, amount: float = None, description: str = None, breakdown: dict = None):
+    """Update a budget category"""
+    try:
+        payload = {}
+        if amount is not None:
+            payload["amount"] = amount
+        if description is not None:
+            payload["description"] = description
+        if breakdown is not None:
+            payload["breakdown"] = breakdown
+        
+        response = requests.put(f"{API_URL}/api/marketing-budget/categories/{category_id}", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        st.error(f"Error updating category: {str(e)}")
+        return False
 
 def show():
-    st.title("📋 Marketing Plan 2026")
-    
-    # Initialize session state for calendar
-    if 'calendar_state' not in st.session_state:
-        st.session_state.calendar_state = load_calendar_state()
-    
+    # Initialize session state
     if 'selected_month' not in st.session_state:
         st.session_state.selected_month = 1
+    if 'edit_mode' not in st.session_state:
+        st.session_state.edit_mode = False
+    
+    # Header with better spacing
+    col1, col2 = st.columns([4, 1.5])
+    with col1:
+        st.title("📋 Marketing Plan 2026")
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <style>
+            [data-testid="stToggle"] label {
+                white-space: nowrap !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        st.session_state.edit_mode = st.toggle("✏️ Edit Mode", value=st.session_state.edit_mode)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -134,147 +280,215 @@ def show():
     # TAB 2: BUDGET
     # ==========================================
     with tab2:
-        # Top level budget
-        st.markdown("### 💰 2026 Marketing Budget")
+        # Fetch budget data
+        budget_data = get_budget_by_year(2026)
+        categories_data = get_categories_by_year(2026)
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Budget", "$213,000")
-        with col2:
-            st.metric("Fixed Costs", "$115,232", delta="54.1%")
-        with col3:
-            st.metric("Flexible Budget", "$97,768", delta="45.9%")
-        
-        st.divider()
-        
-        # Fixed Costs Cards
-        st.markdown("### 🔒 Fixed Costs ($115,232)")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown("""
-            <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;'>
-                <h3 style='color: #1f77b4; margin: 0;'>$24,450</h3>
-                <p style='margin: 5px 0; color: #1f77b4;'><b>CaliNetworks</b></p>
-                <p style='margin: 0; color: #1f77b4; font-size: 0.9em;'>SEO + Content</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;'>
-                <h3 style='color: #1f77b4; margin: 0;'>$40,711</h3>
-                <p style='margin: 5px 0; color: #1f77b4;'><b>Conventions</b></p>
-                <p style='margin: 0; color: #1f77b4; font-size: 0.9em;'>MATT, CAT, SOFT</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown("""
-            <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;'>
-                <h3 style='color: #1f77b4; margin: 0;'>$26,875</h3>
-                <p style='margin: 5px 0; color: #1f77b4;'><b>HubSpot</b></p>
-                <p style='margin: 0; color: #1f77b4; font-size: 0.9em;'>CRM + Marketing</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown("""
-            <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;'>
-                <h3 style='color: #1f77b4; margin: 0;'>$23,196</h3>
-                <p style='margin: 5px 0; color: #1f77b4;'><b>Designer</b></p>
-                <p style='margin: 0; color: #1f77b4; font-size: 0.9em;'>All creative</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # Flexible Budget Cards
-        st.markdown("### 💸 Flexible Budget ($97,768)")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            <div style='background-color: #fff4e6; padding: 15px; border-radius: 10px; border-left: 5px solid #ff7f0e;'>
-                <h3 style='color: #ff7f0e; margin: 0;'>$30,000</h3>
-                <p style='margin: 5px 0; color: #ff7f0e;'><b>Convention Support</b></p>
-                <p style='margin: 0; color: #ff7f0e; font-size: 0.85em;'>• Materials: $25k<br>• Pre/post campaigns: $5k</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            st.markdown("""
-            <div style='background-color: #fef0f0; padding: 15px; border-radius: 10px; border-left: 5px solid #d62728;'>
-                <h3 style='color: #d62728; margin: 0;'>$30,000</h3>
-                <p style='margin: 5px 0;color: #d62728;'><b>R&D / Direct Mail</b></p>
-                <p style='margin: 0; color: #d62728; font-size: 0.85em;'>• Sample programs: $15k<br>• Account mailers: $5k</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div style='background-color: #e8f4f8; padding: 15px; border-radius: 10px; border-left: 5px solid #1f77b4;'>
-                <h3 style='color: #1f77b4; margin: 0;'>$20,000</h3>
-                <p style='margin: 5px 0; color: #1f77b4;'><b>Content Production</b></p>
-                <p style='margin: 0; color: #1f77b4; font-size: 0.85em;'>• Copywriting: $8k<br>• Technical writing: $6k<br>• Photo/video: $4k<br>• Stock assets: $2k</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            st.markdown("""
-            <div style='background-color: #e8f8e8; padding: 15px; border-radius: 10px; border-left: 5px solid #2ca02c;'>
-                <h3 style='color: #2ca02c; margin: 0;'>$11,768</h3>
-                <p style='margin: 5px 0; color: #2ca02c;'><b>LinkedIn Ads</b></p>
-                <p style='margin: 0; color: #2ca02c; font-size: 0.85em;'>• ABM campaigns: $5.8k<br>• Sponsored content: $5.8k</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown("""
-            <div style='background-color: #f0f0f0; padding: 15px; border-radius: 10px; border-left: 5px solid #7f7f7f;'>
-                <h3 style='color: #7f7f7f; margin: 0;'>$3,000</h3>
-                <p style='margin: 5px 0; color: #7f7f7f;'><b>Tools/Software</b></p>
-                <p style='margin: 0; color: #7f7f7f; font-size: 0.85em;'>• Various sales tools: $3k</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            st.markdown("""
-            <div style='background-color: #f8f8e8; padding: 15px; border-radius: 10px; border-left: 5px solid #bcbd22;'>
-                <h3 style='color: #bcbd22; margin: 0;'>$3,000</h3>
-                <p style='margin: 5px 0; color: #bcbd22;'><b>Buffer</b></p>
-                <p style='margin: 0; color: #bcbd22; font-size: 0.85em;'>Contingency for opportunities</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # Quarterly Distribution
-        st.markdown("### 📊 Quarterly Budget Distribution")
-        
-        quarters_data = {
-            "Q1": {"total": 48300, "color": "#1f77b4", "focus": "Website launch, Product #1, MATT"},
-            "Q2": {"total": 51300, "color": "#ff7f0e", "focus": "Product #2, CAT, R&D push"},
-            "Q3": {"total": 58300, "color": "#2ca02c", "focus": "SOFT prep & execution (heaviest)"},
-            "Q4": {"total": 42100, "color": "#d62728", "focus": "SOFT follow-up, nurture, planning"}
-        }
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        for col, (quarter, data) in zip([col1, col2, col3, col4], quarters_data.items()):
-            with col:
-                st.markdown(f"""
-                <div style='background-color: {data['color']}; padding: 20px; border-radius: 10px; color: white; text-align: center;'>
-                    <h3 style='margin: 0; color: white;'>{quarter}</h3>
-                    <h2 style='margin: 10px 0; color: white;'>${data['total']:,}</h2>
-                    <p style='margin: 0; font-size: 0.9em;'>{data['focus']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+        if not budget_data:
+            st.warning("No budget data found. Please run the budget migration script.")
+            if st.button("📝 Run Migration Instructions"):
+                st.code("python scripts/migrate_budget_data.py", language="bash")
+        else:
+            # Top level budget with edit capability
+            st.markdown("### 💰 2026 Marketing Budget")
+            
+            if st.session_state.edit_mode:
+                with st.expander("✏️ Edit Budget Totals", expanded=False):
+                    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+                    
+                    with col1:
+                        new_total = st.number_input(
+                            "Total Budget",
+                            value=float(budget_data["total_budget"]),
+                            step=1000.0,
+                            format="%.0f",
+                            label_visibility="visible"
+                        )
+                    
+                    with col2:
+                        new_fixed = st.number_input(
+                            "Fixed Costs",
+                            value=float(budget_data["fixed_costs"]),
+                            step=1000.0,
+                            format="%.0f",
+                            label_visibility="visible"
+                        )
+                    
+                    with col3:
+                        new_flexible = st.number_input(
+                            "Flexible Budget",
+                            value=float(budget_data["flexible_budget"]),
+                            step=1000.0,
+                            format="%.0f",
+                            label_visibility="visible"
+                        )
+                    
+                    with col4:
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        if st.button("💾 Save", use_container_width=True):
+                            if update_budget_totals(budget_data["id"], new_total, new_fixed, new_flexible):
+                                st.success("✓ Saved!")
+                                st.rerun()
+            
+            # Display totals
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Budget", f"${budget_data['total_budget']:,.0f}")
+            with col2:
+                fixed_pct = (budget_data['fixed_costs'] / budget_data['total_budget'] * 100)
+                st.metric("Fixed Costs", f"${budget_data['fixed_costs']:,.0f}", delta=f"{fixed_pct:.1f}%")
+            with col3:
+                flex_pct = (budget_data['flexible_budget'] / budget_data['total_budget'] * 100)
+                st.metric("Flexible Budget", f"${budget_data['flexible_budget']:,.0f}", delta=f"{flex_pct:.1f}%")
+            
+            st.divider()
+            
+            # Fixed Costs Cards
+            fixed_total = budget_data.get('fixed_costs', 0)
+            st.markdown(f"### 🔒 Fixed Costs (${fixed_total:,.0f})")
+            
+            fixed_categories = [c for c in categories_data if c['category_type'] == 'fixed']
+            
+            if fixed_categories:
+                cols = st.columns(4)
+                for idx, category in enumerate(fixed_categories):
+                    with cols[idx % 4]:
+                        if st.session_state.edit_mode:
+                            with st.expander(f"✏️ Edit {category['category_name']}"):
+                                new_amount = st.number_input(
+                                    "Amount:",
+                                    value=float(category['amount']),
+                                    step=100.0,
+                                    key=f"fixed_{category['id']}_amt"
+                                )
+                                new_desc = st.text_input(
+                                    "Description:",
+                                    value=category.get('description', ''),
+                                    key=f"fixed_{category['id']}_desc"
+                                )
+                                if st.button("💾 Save", key=f"save_fixed_{category['id']}"):
+                                    if update_category(category['id'], amount=new_amount, description=new_desc):
+                                        st.success("✓ Saved!")
+                                        st.rerun()
+                        
+                        st.markdown(f"""
+                        <div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center;'>
+                            <h3 style='color: #1f77b4; margin: 0;'>${category['amount']:,.0f}</h3>
+                            <p style='margin: 5px 0; color: #1f77b4;'><b>{category['category_name']}</b></p>
+                            <p style='margin: 0; color: #1f77b4; font-size: 0.9em;'>{category.get('description', '')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # Flexible Budget Cards
+            flex_total = budget_data.get('flexible_budget', 0)
+            st.markdown(f"### 💸 Flexible Budget (${flex_total:,.0f})")
+            
+            flexible_categories = [c for c in categories_data if c['category_type'] == 'flexible']
+            
+            if flexible_categories:
+                # Color mapping for flexible categories
+                color_map = {
+                    "Convention Support": {"bg": "#fff4e6", "border": "#ff7f0e", "text": "#ff7f0e"},
+                    "R&D / Direct Mail": {"bg": "#fef0f0", "border": "#d62728", "text": "#d62728"},
+                    "Content Production": {"bg": "#e8f4f8", "border": "#1f77b4", "text": "#1f77b4"},
+                    "LinkedIn Ads": {"bg": "#e8f8e8", "border": "#2ca02c", "text": "#2ca02c"},
+                    "Tools/Software": {"bg": "#f0f0f0", "border": "#7f7f7f", "text": "#7f7f7f"},
+                    "Buffer": {"bg": "#f8f8e8", "border": "#bcbd22", "text": "#bcbd22"}
+                }
+                
+                col1, col2, col3 = st.columns(3)
+                
+                for idx, category in enumerate(flexible_categories):
+                    colors = color_map.get(category['category_name'], {"bg": "#f0f0f0", "border": "#7f7f7f", "text": "#7f7f7f"})
+                    
+                    with [col1, col2, col3][idx % 3]:
+                        if st.session_state.edit_mode:
+                            with st.expander(f"✏️ Edit {category['category_name']}"):
+                                new_amount = st.number_input(
+                                    "Amount:",
+                                    value=float(category['amount']),
+                                    step=100.0,
+                                    key=f"flex_{category['id']}_amt"
+                                )
+                                new_desc = st.text_input(
+                                    "Description:",
+                                    value=category.get('description', ''),
+                                    key=f"flex_{category['id']}_desc"
+                                )
+                                
+                                # Edit breakdown if exists
+                                if category.get('breakdown'):
+                                    st.markdown("**Breakdown:**")
+                                    breakdown_str = "\n".join([f"{k}: {v}" for k, v in category['breakdown'].items()])
+                                    new_breakdown_text = st.text_area(
+                                        "Breakdown (format: Item: Amount)",
+                                        value=breakdown_str,
+                                        key=f"flex_{category['id']}_breakdown"
+                                    )
+                                    
+                                    # Parse breakdown
+                                    new_breakdown = {}
+                                    for line in new_breakdown_text.split('\n'):
+                                        if ':' in line:
+                                            key, val = line.split(':', 1)
+                                            try:
+                                                new_breakdown[key.strip()] = float(val.strip())
+                                            except:
+                                                pass
+                                else:
+                                    new_breakdown = None
+                                
+                                if st.button("💾 Save", key=f"save_flex_{category['id']}"):
+                                    if update_category(
+                                        category['id'],
+                                        amount=new_amount,
+                                        description=new_desc,
+                                        breakdown=new_breakdown
+                                    ):
+                                        st.success("✓ Saved!")
+                                        st.rerun()
+                        
+                        # Build breakdown display
+                        breakdown_html = ""
+                        if category.get('breakdown'):
+                            breakdown_items = [f"• {k}: ${v:,.0f}" for k, v in category['breakdown'].items()]
+                            breakdown_html = "<br>".join(breakdown_items)
+                        
+                        st.markdown(f"""
+                        <div style='background-color: {colors["bg"]}; padding: 15px; border-radius: 10px; border-left: 5px solid {colors["border"]}; margin-bottom: 15px;'>
+                            <h3 style='color: {colors["text"]}; margin: 0;'>${category['amount']:,.0f}</h3>
+                            <p style='margin: 5px 0; color: {colors["text"]};'><b>{category['category_name']}</b></p>
+                            <p style='margin: 0; color: {colors["text"]}; font-size: 0.85em;'>{breakdown_html if breakdown_html else category.get('description', '')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # Quarterly Distribution
+            st.markdown("### 📊 Quarterly Budget Distribution")
+            
+            quarterly = budget_data.get('quarterly_distribution', {})
+            
+            if quarterly:
+                col1, col2, col3, col4 = st.columns(4)
+                
+                for col, (quarter, data) in zip([col1, col2, col3, col4], quarterly.items()):
+                    with col:
+                        if st.session_state.edit_mode:
+                            with st.expander(f"✏️ Edit {quarter}"):
+                                st.info("Quarterly distribution editing coming soon")
+                        
+                        st.markdown(f"""
+                        <div style='background-color: {data.get('color', '#1f77b4')}; padding: 20px; border-radius: 10px; color: white; text-align: center;'>
+                            <h3 style='margin: 0; color: white;'>{quarter}</h3>
+                            <h2 style='margin: 10px 0; color: white;'>${data.get('total', 0):,}</h2>
+                            <p style='margin: 0; font-size: 0.9em;'>{data.get('focus', '')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
     
     # ==========================================
     # TAB 3: CHANNELS (TACTICAL FOCUS)
@@ -389,12 +603,10 @@ def show():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                
-                
                 st.markdown("<br>", unsafe_allow_html=True)
     
     # ==========================================
-    # TAB 4: INTERACTIVE MARKETING CALENDAR
+    # TAB 4: INTERACTIVE MARKETING CALENDAR (API-DRIVEN)
     # ==========================================
     with tab4:
         st.markdown("### 📅 2026 Marketing Calendar")
@@ -402,23 +614,44 @@ def show():
         # Year overview with major milestones
         st.markdown("#### Year Overview - Major Milestones")
         
-        timeline_data = [
-            {"month": "Q1", "color": "#1f77b4", "events": ["Website Launch", "Product #1 Launch", "MATT Convention"]},
-            {"month": "Q2", "color": "#ff7f0e", "events": ["Product #2 Launch", "CAT Convention", "3 R&D Partnerships Closed"]},
-            {"month": "Q3", "color": "#2ca02c", "events": ["SOFT/TIAFT (Sept)", "Biggest Lead Gen Event", "Showcase Both Products"]},
-            {"month": "Q4", "color": "#d62728", "events": ["SOFT Lead Nurture", "2027 Planning", "Year-End Campaigns"]}
-        ]
+        # Fetch all calendars for the year
+        all_calendars = get_all_calendars(2026)
         
-        cols = st.columns(4)
-        for col, quarter in zip(cols, timeline_data):
-            with col:
-                st.markdown(f"""
-                <div style='background-color: {quarter['color']}; padding: 15px; border-radius: 10px; color: white;'>
-                    <h4 style='margin: 0; color: white; text-align: center;'>{quarter['month']}</h4>
-                </div>
-                """, unsafe_allow_html=True)
-                for event in quarter['events']:
-                    st.markdown(f"• {event}")
+        if all_calendars:
+            # Group by quarter
+            quarters = {
+                "Q1": [c for c in all_calendars if c["month"] in [1, 2, 3]],
+                "Q2": [c for c in all_calendars if c["month"] in [4, 5, 6]],
+                "Q3": [c for c in all_calendars if c["month"] in [7, 8, 9]],
+                "Q4": [c for c in all_calendars if c["month"] in [10, 11, 12]]
+            }
+            
+            quarter_colors = {
+                "Q1": "#1f77b4",
+                "Q2": "#ff7f0e",
+                "Q3": "#2ca02c",
+                "Q4": "#d62728"
+            }
+            
+            cols = st.columns(4)
+            for col, (quarter, calendars) in zip(cols, quarters.items()):
+                with col:
+                    st.markdown(f"""
+                    <div style='background-color: {quarter_colors[quarter]}; padding: 15px; border-radius: 10px; color: white;'>
+                        <h4 style='margin: 0; color: white; text-align: center;'>{quarter}</h4>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show all major campaigns from this quarter
+                    all_campaigns = []
+                    for cal in calendars:
+                        if cal.get("major_campaigns"):
+                            all_campaigns.extend(cal["major_campaigns"])
+                    
+                    for campaign in list(dict.fromkeys(all_campaigns)):  # Remove duplicates while preserving order
+                        st.markdown(f"• {campaign}")
+        else:
+            st.warning("No calendar data found. Please run the migration script first.")
         
         st.divider()
         
@@ -439,473 +672,181 @@ def show():
             )
             st.session_state.selected_month = selected_month
         
-        # Monthly activities template
-        monthly_activities = {
-            1: {  # January
-                "focus": "Foundation Setting",
-                "major_campaigns": ["Website Launch", "New Year Customer Outreach"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Product Spotlight", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Content Planning", "friday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Direct Mail Planning", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("Product #1 Launch Prep", "thursday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False)
-                    ]
-                }
-            },
-            2: {  # February
-                "focus": "Product Launch #1 Execution",
-                "major_campaigns": ["Product #1 Launch Campaign", "MATT Prep"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: Product #1 Launch Announcement", "monday", False),
-                        ("Email: Product #1 Launch Campaign", "tuesday", False),
-                        ("LinkedIn: Product #1 Features/Benefits", "wednesday", False),
-                        ("LinkedIn: Team Behind Product #1", "friday", False),
-                        ("Direct Mail Execution - Product #1", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: Early Product #1 Customer Story", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("MATT Materials Prep", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: MATT Preview/What to Expect", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: UTAK at MATT - Booth Info", "wednesday", False),
-                        ("LinkedIn: Team Heading to MATT", "friday", False),
-                        ("MATT Pre-Event Campaign Launch", "thursday", False)
-                    ]
-                }
-            },
-            3: {  # March
-                "focus": "MATT Convention & Q1 Close",
-                "major_campaigns": ["MATT Convention", "Q1 Reporting"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Final MATT Reminder", "monday", False),
-                        ("Email: Meet Us at MATT", "tuesday", False),
-                        ("LinkedIn: Live Updates from MATT", "wednesday", False),
-                        ("MATT Convention Days", "thursday", False),
-                        ("MATT Follow-up Emails Start", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: MATT Recap & Highlights", "monday", False),
-                        ("Email: Product Spotlight", "tuesday", False),
-                        ("LinkedIn: MATT Key Takeaways", "wednesday", False),
-                        ("LinkedIn: Thank You MATT Attendees", "friday", False),
-                        ("MATT Lead Nurture Setup", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Insights from MATT", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Q2 Planning Kickoff", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Q1 Wins & Learnings", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: Looking Ahead to Q2", "wednesday", False),
-                        ("LinkedIn: Team Q1 Celebration", "friday", False),
-                        ("Q1 Performance Report", "thursday", False)
-                    ]
-                }
-            },
-            4: {  # April
-                "focus": "Product #2 Development & R&D Push",
-                "major_campaigns": ["Product #2 Prep", "R&D Outreach Campaign"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: R&D Partnership Value Prop", "monday", False),
-                        ("Email: R&D Partnership Opportunities", "tuesday", False),
-                        ("LinkedIn: UTAK R&D Capabilities", "wednesday", False),
-                        ("LinkedIn: Team - R&D Focus", "friday", False),
-                        ("Direct Mail Planning - R&D Targets", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: Custom-to-Stock Success Story", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Product #2 Content Development", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Sneak Peek Product #2", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: UTAK Innovation Process", "wednesday", False),
-                        ("LinkedIn: Team Behind Product #2", "friday", False),
-                        ("CAT Convention Prep Start", "thursday", False)
-                    ]
-                }
-            },
-            5: {  # May
-                "focus": "Product #2 Launch & CAT",
-                "major_campaigns": ["Product #2 Launch", "CAT Prep"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: Product #2 Launch Announcement", "monday", False),
-                        ("Email: Product #2 Launch Campaign", "tuesday", False),
-                        ("LinkedIn: Product #2 Technical Deep Dive", "wednesday", False),
-                        ("LinkedIn: Product #2 Applications", "friday", False),
-                        ("Direct Mail Execution - Product #2", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Product #2 vs Alternatives", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: Both Products Together Value", "wednesday", False),
-                        ("LinkedIn: Team CAT Prep", "friday", False),
-                        ("CAT Materials Preparation", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: CAT Preview/Meet Us There", "monday", False),
-                        ("Email: CAT Pre-Event - Meet UTAK", "tuesday", False),
-                        ("LinkedIn: What We're Showcasing at CAT", "wednesday", False),
-                        ("LinkedIn: Team Heading to CAT", "friday", False),
-                        ("CAT Pre-Event Campaign", "thursday", False)
-                    ]
-                }
-            },
-            6: {  # June
-                "focus": "CAT Convention & Mid-Year Review",
-                "major_campaigns": ["CAT Convention", "R&D Partnership Check-in", "Mid-Year Reporting"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Final CAT Reminder", "monday", False),
-                        ("Email: Last Chance - Visit UTAK at CAT", "tuesday", False),
-                        ("LinkedIn: Live from CAT", "wednesday", False),
-                        ("CAT Convention Days", "thursday", False),
-                        ("CAT Follow-up Emails Start", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: CAT Recap & Key Moments", "monday", False),
-                        ("Email: Product Spotlight", "tuesday", False),
-                        ("LinkedIn: CAT Connections & Learnings", "wednesday", False),
-                        ("LinkedIn: Thank You CAT Attendees", "friday", False),
-                        ("R&D Partnership Status Review", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Mid-Year Industry Trends", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: UTAK First Half Achievements", "wednesday", False),
-                        ("LinkedIn: Team Mid-Year Celebration", "friday", False),
-                        ("Q3 SOFT Planning Begins", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Looking Ahead to H2", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: SOFT September Preview", "wednesday", False),
-                        ("LinkedIn: Team Gearing Up for SOFT", "friday", False),
-                        ("Mid-Year Performance Report", "thursday", False)
-                    ]
-                }
-            },
-            7: {  # July
-                "focus": "SOFT Preparation Begins",
-                "major_campaigns": ["SOFT Pre-Event Campaign Launch"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: SOFT September Announcement", "monday", False),
-                        ("Email: SOFT Pre-Event Wave 1", "tuesday", False),
-                        ("LinkedIn: Why Attend SOFT", "wednesday", False),
-                        ("LinkedIn: Team SOFT Prep Begins", "friday", False),
-                        ("Direct Mail Planning - SOFT Targets", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: SOFT Session Previews", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: What UTAK is Bringing to SOFT", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("SOFT Materials Design Start", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: SOFT Networking Preview", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: UTAK SOFT History/Highlights", "wednesday", False),
-                        ("LinkedIn: Team Countdown to SOFT", "friday", False),
-                        ("SOFT Booth Design Finalize", "thursday", False)
-                    ]
-                }
-            },
-            8: {  # August
-                "focus": "SOFT Final Prep",
-                "major_campaigns": ["SOFT Direct Mail", "SOFT Pre-Event Intensifies"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: 30 Days to SOFT", "monday", False),
-                        ("Email: SOFT Pre-Event Wave 2", "tuesday", False),
-                        ("LinkedIn: UTAK Booth Location & Details", "wednesday", False),
-                        ("LinkedIn: Meet the UTAK SOFT Team", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: SOFT Product Showcase Preview", "monday", False),
-                        ("Email: Product Spotlight", "tuesday", False),
-                        ("LinkedIn: Schedule Your SOFT Meeting", "wednesday", False),
-                        ("LinkedIn: SOFT Demos & Presentations", "friday", False),
-                        ("Direct Mail Execution - SOFT VIPs", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: 2 Weeks to SOFT", "monday", False),
-                        ("Email: SOFT Pre-Event Wave 3", "tuesday", False),
-                        ("LinkedIn: SOFT Must-See Sessions", "wednesday", False),
-                        ("LinkedIn: Team Final SOFT Prep", "friday", False),
-                        ("SOFT Booth Materials Complete", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Final Week - SOFT Countdown", "monday", False),
-                        ("Email: Final SOFT Reminder - Visit Us", "tuesday", False),
-                        ("LinkedIn: UTAK SOFT Schedule", "wednesday", False),
-                        ("LinkedIn: Team Traveling to SOFT", "friday", False),
-                        ("SOFT Prep Complete - Travel", "thursday", False)
-                    ]
-                }
-            },
-            9: {  # September
-                "focus": "SOFT/TIAFT - BIGGEST EVENT",
-                "major_campaigns": ["SOFT Convention", "Product Showcase", "Aggressive Follow-up"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: SOFT This Week!", "monday", False),
-                        ("Email: Last Call - Meet UTAK at SOFT", "tuesday", False),
-                        ("LinkedIn: En Route to SOFT", "wednesday", False),
-                        ("SOFT Setup Day", "thursday", False),
-                        ("SOFT Convention Day 1", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: Live from SOFT - Day 2", "monday", False),
-                        ("LinkedIn: SOFT Day 3 Highlights", "tuesday", False),
-                        ("LinkedIn: SOFT Wrap-up & Thank Yous", "wednesday", False),
-                        ("SOFT Travel Back", "thursday", False),
-                        ("Lead Data Entry Begins", "friday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: SOFT Top 5 Takeaways", "monday", False),
-                        ("Email: SOFT Follow-up Wave 1", "tuesday", False),
-                        ("LinkedIn: SOFT Connections Recap", "wednesday", False),
-                        ("LinkedIn: Thank You SOFT Attendees", "friday", False),
-                        ("SOFT Follow-up Calls Start", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: SOFT Learnings Applied", "monday", False),
-                        ("Email: SOFT Follow-up Wave 2", "tuesday", False),
-                        ("LinkedIn: SOFT Lead Stories Begin", "wednesday", False),
-                        ("LinkedIn: Team Post-SOFT Debrief", "friday", False),
-                        ("Q3 Performance Report", "thursday", False)
-                    ]
-                }
-            },
-            10: {  # October
-                "focus": "SOFT Lead Nurture & Q4 Planning",
-                "major_campaigns": ["SOFT Lead Nurture", "Q4 Campaign Planning"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: SOFT Success Story #1", "monday", False),
-                        ("Email: SOFT Lead Follow-up Campaign", "tuesday", False),
-                        ("LinkedIn: Implementing SOFT Insights", "wednesday", False),
-                        ("LinkedIn: Team Q4 Focus", "friday", False),
-                        ("Q4 Campaign Planning Workshop", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("2027 Budget Development Start", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Q4 Priorities Preview", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: Year-End Planning", "wednesday", False),
-                        ("LinkedIn: Team Preparing for Year-End", "friday", False),
-                        ("2027 Strategic Planning", "thursday", False)
-                    ]
-                }
-            },
-            11: {  # November
-                "focus": "Year-End Push & 2027 Planning",
-                "major_campaigns": ["Year-End Campaign", "Customer Retention"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Educational Content", "tuesday", False),
-                        ("LinkedIn: UTAK Story/Customer Success", "wednesday", False),
-                        ("LinkedIn: Team Highlights/Culture", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: Year-End Planning Tips", "monday", False),
-                        ("Email: Year-End Special Offer", "tuesday", False),
-                        ("LinkedIn: 2026 UTAK Wins", "wednesday", False),
-                        ("LinkedIn: Team Gratitude", "friday", False),
-                        ("Direct Mail Planning - Year-End", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Industry Year in Review", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: Customer Appreciation", "wednesday", False),
-                        ("LinkedIn: Team Year-End Reflections", "friday", False),
-                        ("2027 Budget Finalization", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Getting Ready for 2027", "monday", False),
-                        ("Email: Offer/CTA (Samples, Consult)", "tuesday", False),
-                        ("LinkedIn: UTAK 2027 Preview", "wednesday", False),
-                        ("LinkedIn: Team Holiday Prep", "friday", False),
-                        ("2027 Marketing Plan Draft", "thursday", False)
-                    ]
-                }
-            },
-            12: {  # December
-                "focus": "Year-End & 2027 Prep",
-                "major_campaigns": ["Customer Appreciation", "2027 Kickoff Planning"],
-                "weekly_tasks": {
-                    "Week 1": [
-                        ("LinkedIn: Industry Insights/Trends", "monday", False),
-                        ("Email: Customer Appreciation", "tuesday", False),
-                        ("LinkedIn: Thank You 2026", "wednesday", False),
-                        ("LinkedIn: Team Year in Review", "friday", False),
-                        ("Monthly Review", "friday", False)
-                    ],
-                    "Week 2": [
-                        ("LinkedIn: 2026 Top Moments", "monday", False),
-                        ("Email: Product Spotlight", "tuesday", False),
-                        ("LinkedIn: Customer Stories of 2026", "wednesday", False),
-                        ("LinkedIn: Team Holiday Spirit", "friday", False),
-                        ("Direct Mail Execution - Appreciation", "thursday", False)
-                    ],
-                    "Week 3": [
-                        ("LinkedIn: Looking Forward to 2027", "monday", False),
-                        ("Email: Customer Success Story", "tuesday", False),
-                        ("LinkedIn: UTAK 2027 Goals", "wednesday", False),
-                        ("LinkedIn: Team Holiday Message", "friday", False),
-                        ("Annual Performance Review", "thursday", False)
-                    ],
-                    "Week 4": [
-                        ("LinkedIn: Happy Holidays from UTAK", "monday", False),
-                        ("Email: Year-End Thank You", "tuesday", False),
-                        ("LinkedIn: 2026 Thank You Message", "wednesday", False),
-                        ("LinkedIn: Team 2027 Kickoff Preview", "friday", False),
-                        ("2026 Annual Report Complete", "thursday", False)
-                    ]
-                }
-            }
-        }
+        # Fetch calendar data for selected month
+        calendar_data = get_calendar_with_activities(2026, selected_month)
         
-        # Display selected month
-        month_data = monthly_activities.get(selected_month, {})
-        
-        st.markdown(f"### {month_names[selected_month-1]} 2026")
-        
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.info(f"**Focus:** {month_data.get('focus', 'N/A')}")
-        with col2:
-            st.info(f"**Major Campaigns:** {', '.join(month_data.get('major_campaigns', []))}")
-        
-        st.divider()
-        
-        # Weekly checklist
-        for week, tasks in month_data.get('weekly_tasks', {}).items():
-            st.markdown(f"#### {week}")
+        if not calendar_data:
+            st.warning(f"No calendar data found for {month_names[selected_month-1]} 2026")
             
-            for i, (task, day, completed) in enumerate(tasks):
-                task_key = f"{selected_month}_{week}_{i}"
-                
-                # Get completion state
-                is_complete = st.session_state.calendar_state.get(task_key, False)
-                
-                col1, col2, col3 = st.columns([0.5, 3, 1])
-                
-                with col1:
-                    # Checkbox for completion
-                    new_state = st.checkbox(
-                        f"Complete {task}",
-                        value=is_complete, 
-                        key=f"check_{task_key}", 
-                        label_visibility="collapsed"
+            if st.session_state.edit_mode:
+                st.info("📝 Run the migration script to populate calendar data, or create calendar entries via the API")
+        else:
+            # Display month header
+            st.markdown(f"### {month_names[selected_month-1]} 2026")
+            
+            # Edit focus and campaigns
+            if st.session_state.edit_mode:
+                with st.expander("✏️ Edit Monthly Focus & Campaigns", expanded=False):
+                    new_focus = st.text_input(
+                        "Monthly Focus:",
+                        value=calendar_data.get("focus", ""),
+                        key="focus_input"
                     )
-                    if new_state != is_complete:
-                        st.session_state.calendar_state[task_key] = new_state
-                        save_calendar_state(st.session_state.calendar_state)
-                
-                with col2:
-                    if is_complete:
-                        st.markdown(f"~~{task}~~")
-                    else:
-                        st.markdown(f"**{task}**")
-                
-                with col3:
-                    day_colors = {
-                        "monday": "#1f77b4",
-                        "tuesday": "#ff7f0e",
-                        "wednesday": "#2ca02c",
-                        "thursday": "#d62728",
-                        "friday": "#9467bd"
-                    }
-                    color = day_colors.get(day, "#7f7f7f")
-                    st.markdown(f"<span style='background-color: {color}; color: white; padding: 3px 10px; border-radius: 5px; font-size: 0.85em;'>{day.title()}</span>", unsafe_allow_html=True)
+                    
+                    campaigns_text = "\n".join(calendar_data.get("major_campaigns", []))
+                    new_campaigns = st.text_area(
+                        "Major Campaigns (one per line):",
+                        value=campaigns_text,
+                        key="campaigns_input",
+                        height=100
+                    )
+                    
+                    if st.button("💾 Save Changes", key="save_focus"):
+                        campaigns_list = [c.strip() for c in new_campaigns.split("\n") if c.strip()]
+                        if update_calendar_focus(calendar_data["id"], new_focus, campaigns_list):
+                            st.success("✓ Updated successfully!")
+                            st.rerun()
+            
+            # Display focus and campaigns
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.info(f"**Focus:** {calendar_data.get('focus', 'N/A')}")
+            with col2:
+                campaigns = calendar_data.get("major_campaigns", [])
+                st.info(f"**Major Campaigns:** {', '.join(campaigns) if campaigns else 'None'}")
             
             st.divider()
+            
+            # Group activities by week
+            activities = calendar_data.get("activities", [])
+            activities_by_week = {}
+            for activity in activities:
+                week = activity["week_number"]
+                if week not in activities_by_week:
+                    activities_by_week[week] = []
+                activities_by_week[week].append(activity)
+            
+            # Sort activities within each week by order
+            for week in activities_by_week:
+                activities_by_week[week].sort(key=lambda x: x["order_in_week"])
+            
+            # Display weekly activities
+            for week in range(1, 5):  # Weeks 1-4
+                st.markdown(f"#### Week {week}")
+                
+                week_activities = activities_by_week.get(week, [])
+                
+                # Add new activity button in edit mode
+                if st.session_state.edit_mode:
+                    with st.expander(f"➕ Add New Activity to Week {week}"):
+                        with st.form(key=f"form_week_{week}", clear_on_submit=True):
+                            new_activity_name = st.text_input(
+                                "Activity Name:",
+                                placeholder="e.g., LinkedIn: Industry Insights/Trends",
+                                key=f"new_act_name_week{week}"
+                            )
+                            
+                            new_day = st.selectbox(
+                                "Day of Week:",
+                                options=["monday", "tuesday", "wednesday", "thursday", "friday"],
+                                format_func=lambda x: x.title(),
+                                key=f"new_day_week{week}"
+                            )
+                            
+                            submitted = st.form_submit_button("➕ Add Activity")
+                            
+                            if submitted and new_activity_name:
+                                order = len(week_activities)
+                                if create_activity(calendar_data["id"], week, new_activity_name, new_day, order):
+                                    st.success("✓ Activity added!")
+                                    st.rerun()
+                            elif submitted:
+                                st.error("Please enter an activity name")
+                
+                # Display activities
+                if not week_activities:
+                    st.caption("No activities for this week")
+                else:
+                    for activity in week_activities:
+                        col1, col2, col3, col4 = st.columns([0.5, 3, 1, 0.5])
+                        
+                        with col1:
+                            # Checkbox for completion
+                            is_complete = activity["is_completed"]
+                            new_state = st.checkbox(
+                                f"Complete {activity['activity_name']}",
+                                value=is_complete,
+                                key=f"check_{activity['id']}",
+                                label_visibility="collapsed"
+                            )
+                            
+                            if new_state != is_complete:
+                                if toggle_activity_completion(activity["id"]):
+                                    st.rerun()
+                        
+                        with col2:
+                            if st.session_state.edit_mode:
+                                # Editable activity name
+                                new_name = st.text_input(
+                                    "Activity",
+                                    value=activity["activity_name"],
+                                    key=f"edit_{activity['id']}",
+                                    label_visibility="collapsed"
+                                )
+                                
+                                if new_name != activity["activity_name"]:
+                                    # Show save button
+                                    if st.button("💾", key=f"save_{activity['id']}", help="Save changes"):
+                                        if update_activity(activity["id"], activity_name=new_name):
+                                            st.success("✓ Saved!")
+                                            st.rerun()
+                            else:
+                                # Display only
+                                if is_complete:
+                                    st.markdown(f"~~{activity['activity_name']}~~")
+                                else:
+                                    st.markdown(f"**{activity['activity_name']}**")
+                        
+                        with col3:
+                            # Day of week badge
+                            day_colors = {
+                                "monday": "#1f77b4",
+                                "tuesday": "#ff7f0e",
+                                "wednesday": "#2ca02c",
+                                "thursday": "#d62728",
+                                "friday": "#9467bd"
+                            }
+                            color = day_colors.get(activity["day_of_week"], "#7f7f7f")
+                            
+                            if st.session_state.edit_mode:
+                                # Editable day
+                                new_day = st.selectbox(
+                                    "Day",
+                                    options=["monday", "tuesday", "wednesday", "thursday", "friday"],
+                                    index=["monday", "tuesday", "wednesday", "thursday", "friday"].index(activity["day_of_week"]),
+                                    format_func=lambda x: x.title(),
+                                    key=f"day_{activity['id']}",
+                                    label_visibility="collapsed"
+                                )
+                                
+                                if new_day != activity["day_of_week"]:
+                                    if update_activity(activity["id"], day_of_week=new_day):
+                                        st.rerun()
+                            else:
+                                st.markdown(
+                                    f"<span style='background-color: {color}; color: white; padding: 3px 10px; border-radius: 5px; font-size: 0.85em;'>{activity['day_of_week'].title()}</span>",
+                                    unsafe_allow_html=True
+                                )
+                        
+                        with col4:
+                            # Delete button in edit mode
+                            if st.session_state.edit_mode:
+                                if st.button("🗑️", key=f"del_{activity['id']}", help="Delete activity"):
+                                    if delete_activity(activity["id"]):
+                                        st.success("✓ Deleted!")
+                                        st.rerun()
+                
+                st.divider()
     
     # ==========================================
     # TAB 5: KPIs (SIMPLIFIED)

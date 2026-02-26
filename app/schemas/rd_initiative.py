@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Optional, List, TYPE_CHECKING
 from pydantic import BaseModel, Field
 
-# Import related schemas directly instead of using forward references
+# Import related schemas
 from app.schemas.rd_feasibility import RDFeasibility
 from app.schemas.rd_customer_interest import RDCustomerInterest
 from app.schemas.rd_sample import RDSample
@@ -19,6 +19,13 @@ from app.schemas.rd_roi import RDROI
 class RDInitiativeBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
+    
+    # NEW: Initiative type and matrix
+    initiative_type: str = "new_product"  # new_product, revision
+    part_number: Optional[str] = None
+    matrix_type: Optional[str] = None  # whole_blood, urine, serum, smx_whole_blood, smx_urine, smx_serum, other
+    matrix_other_description: Optional[str] = None
+    
     stage: str = "feasibility"
     target_market: Optional[str] = None
     market_size_estimate: Optional[float] = None
@@ -39,6 +46,10 @@ class RDInitiativeCreate(RDInitiativeBase):
 class RDInitiativeUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    initiative_type: Optional[str] = None
+    part_number: Optional[str] = None
+    matrix_type: Optional[str] = None
+    matrix_other_description: Optional[str] = None
     stage: Optional[str] = None
     target_market: Optional[str] = None
     market_size_estimate: Optional[float] = None

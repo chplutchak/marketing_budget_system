@@ -5,6 +5,13 @@ from pydantic import BaseModel
 
 class RDFeasibilityBase(BaseModel):
     initiative_id: int
+    
+    # NEW: Familiarity checks and documentation
+    matrix_familiar: Optional[bool] = None
+    analyte_familiar: Optional[bool] = None
+    target_instruments: Optional[str] = None
+    document_references: Optional[str] = None
+    
     is_manufacturable: Optional[str] = None  # yes, no, needs_research
     manufacturing_complexity: Optional[str] = None  # low, medium, high
     estimated_lead_time_days: Optional[int] = None
@@ -25,6 +32,10 @@ class RDFeasibilityCreate(RDFeasibilityBase):
 
 
 class RDFeasibilityUpdate(BaseModel):
+    matrix_familiar: Optional[bool] = None
+    analyte_familiar: Optional[bool] = None
+    target_instruments: Optional[str] = None
+    document_references: Optional[str] = None
     is_manufacturable: Optional[str] = None
     manufacturing_complexity: Optional[str] = None
     estimated_lead_time_days: Optional[int] = None

@@ -13,6 +13,7 @@ from app.schemas.rd_expense import RDExpense, RDExpenseCreate, RDExpenseUpdate
 from app.schemas.rd_revenue import RDRevenue, RDRevenueCreate, RDRevenueUpdate
 from app.schemas.rd_note import RDNote, RDNoteCreate, RDNoteUpdate
 from app.schemas.rd_roi import RDROI, RDROICreate, RDROIUpdate
+from app.schemas.rd_team import RDInitiativeTeam, RDInitiativeTeamCreate, RDInitiativeTeamUpdate
 
 from app.crud import (
     rd_initiative,
@@ -24,7 +25,8 @@ from app.crud import (
     rd_expense,
     rd_revenue,
     rd_note,
-    rd_roi
+    rd_roi,
+    rd_team
 )
 
 router = APIRouter()
@@ -86,6 +88,50 @@ def delete_initiative(initiative_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="R&D initiative not found")
     return {"message": "R&D initiative deleted successfully"}
 
+# ===========================
+# TEAM
+# ===========================
+
+@router.get("/initiatives/{initiative_id}/team", response_model=List[RDInitiativeTeam])
+def get_initiative_team(initiative_id: int, db: Session = Depends(get_db)):
+    """Get all team members for an initiative"""
+    team_members = rd_team.get_team_members_by_initiative(db, initiative_id)
+    return team_members
+
+
+@router.get("/initiatives/{initiative_id}/team/department/{department}", response_model=List[RDInitiativeTeam])
+def get_initiative_team_by_department(initiative_id: int, department: str, db: Session = Depends(get_db)):
+    """Get team members for an initiative filtered by department"""
+    team_members = rd_team.get_team_members_by_department(db, initiative_id, department)
+    return team_members
+
+
+@router.post("/initiatives/{initiative_id}/team", response_model=RDInitiativeTeam)
+def add_team_member(initiative_id: int, team_member: RDInitiativeTeamCreate, db: Session = Depends(get_db)):
+    """Add a team member to an initiative"""
+    # Verify initiative_id matches
+    if team_member.initiative_id != initiative_id:
+        raise HTTPException(status_code=400, detail="Initiative ID mismatch")
+    
+    return rd_team.create_team_member(db, team_member)
+
+
+@router.put("/team/{team_member_id}", response_model=RDInitiativeTeam)
+def update_team_member(team_member_id: int, team_member: RDInitiativeTeamUpdate, db: Session = Depends(get_db)):
+    """Update a team member assignment"""
+    updated = rd_team.update_team_member(db, team_member_id, team_member)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return updated
+
+
+@router.delete("/team/{team_member_id}")
+def remove_team_member(team_member_id: int, db: Session = Depends(get_db)):
+    """Remove a team member from an initiative"""
+    deleted = rd_team.delete_team_member(db, team_member_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return {"message": "Team member removed successfully"}
 
 # ===========================
 # FEASIBILITY (Manufacturing)
@@ -574,3 +620,4 @@ def delete_roi(roi_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="ROI record not found")
     return {"message": "ROI record deleted successfully"}
+    

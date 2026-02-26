@@ -8,6 +8,11 @@ class RDSampleBase(BaseModel):
     sample_type: str  # trial_batch, demo_sample, validation_sample
     recipient_name: str
     recipient_company: Optional[str] = None
+    
+    # NEW: Product tracking
+    part_number: Optional[str] = None
+    document_reference: Optional[str] = None
+    
     quantity: Optional[float] = None
     unit: Optional[str] = None
     ship_date: Optional[date] = None
@@ -31,6 +36,8 @@ class RDSampleUpdate(BaseModel):
     sample_type: Optional[str] = None
     recipient_name: Optional[str] = None
     recipient_company: Optional[str] = None
+    part_number: Optional[str] = None
+    document_reference: Optional[str] = None
     quantity: Optional[float] = None
     unit: Optional[str] = None
     ship_date: Optional[date] = None

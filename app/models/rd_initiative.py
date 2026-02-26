@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Text, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, Text, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import date
 from app.database import Base
 
 class RDInitiative(Base):
@@ -9,6 +10,12 @@ class RDInitiative(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
+    
+    # NEW: Initiative type and matrix
+    initiative_type = Column(String(50), nullable=False, default="new_product")  # new_product, revision
+    part_number = Column(String(100), nullable=True)  # Only for revisions
+    matrix_type = Column(String(50), nullable=True)  # whole_blood, urine, serum, smx_whole_blood, smx_urine, smx_serum, other
+    matrix_other_description = Column(String(255), nullable=True)  # Only if matrix_type = other
     
     # Stage tracking
     stage = Column(String(50), nullable=False, default="feasibility")  
@@ -37,6 +44,7 @@ class RDInitiative(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
+    team_members = relationship("RDInitiativeTeam", back_populates="initiative", cascade="all, delete-orphan")
     feasibility = relationship("RDFeasibility", back_populates="initiative", uselist=False)
     customer_interests = relationship("RDCustomerInterest", back_populates="initiative", cascade="all, delete-orphan")
     samples = relationship("RDSample", back_populates="initiative", cascade="all, delete-orphan")
@@ -49,13 +57,44 @@ class RDInitiative(Base):
     
     def __repr__(self):
         return f"<RDInitiative(name='{self.name}', stage='{self.stage}')>"
+    
 
+class RDInitiativeTeam(Base):
+    """Team members assigned to R&D initiatives by department"""
+    __tablename__ = "rd_initiative_team"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    initiative_id = Column(Integer, ForeignKey("rd_initiatives.id"), nullable=False)
+    
+    # Assignment details
+    department = Column(String(100), nullable=False)  # Marketing, Operations, Manufacturing, Sales, R&D
+    person_name = Column(String(200), nullable=False)
+    role = Column(String(100))  # Lead, Support, Reviewer, Stakeholder
+    
+    # Dates
+    assigned_date = Column(Date, default=date.today)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    initiative = relationship("RDInitiative", back_populates="team_members")
+    
+    def __repr__(self):
+        return f"<RDInitiativeTeam(initiative_id={self.initiative_id}, {self.department}: {self.person_name})>"
 
 class RDFeasibility(Base):
     __tablename__ = "rd_feasibility"
     
     id = Column(Integer, primary_key=True, index=True)
     initiative_id = Column(Integer, ForeignKey("rd_initiatives.id"), nullable=False, unique=True)
+    
+    # NEW: Manufacturing familiarity checks
+    matrix_familiar = Column(Boolean, nullable=True)  # Have we worked with this matrix?
+    analyte_familiar = Column(Boolean, nullable=True)  # Experience with this analyte?
+    target_instruments = Column(Text, nullable=True)  # What instruments will use this QC?
+    document_references = Column(Text, nullable=True)  # Links to SOPs, prior projects, specs
     
     # Manufacturing analysis
     is_manufacturable = Column(String(20), nullable=True)  # yes, no, needs_research
@@ -103,6 +142,11 @@ class RDCustomerInterest(Base):
     contact_email = Column(String(255), nullable=True)
     contact_phone = Column(String(50), nullable=True)
     
+    # NEW: Strategic customer intel
+    current_product_used = Column(String(255), nullable=True)  # What they're using now
+    testing_method = Column(String(100), nullable=True)  # LCMS, ELISA, GC-MS, etc.
+    interest_timeline = Column(String(50), nullable=True)  # immediate, 30_days, 90_days, future
+    
     # Interest tracking
     interest_level = Column(String(20), nullable=False, default="interested")  
     # interested, highly_interested, committed, testing, ordered, not_interested
@@ -146,6 +190,10 @@ class RDSample(Base):
     recipient_name = Column(String(255), nullable=False)
     recipient_company = Column(String(255), nullable=True)
     
+    # NEW: Product tracking
+    part_number = Column(String(100), nullable=True)  # UTAK part number
+    document_reference = Column(String(500), nullable=True)  # Link to IFU or other docs
+    
     # Logistics
     quantity = Column(Float, nullable=True)
     unit = Column(String(50), nullable=True)
@@ -178,7 +226,6 @@ class RDSample(Base):
     
     def __repr__(self):
         return f"<RDSample(recipient='{self.recipient_name}', cost=${self.sample_cost})>"
-
 
 class RDContact(Base):
     __tablename__ = "rd_contacts"
